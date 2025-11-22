@@ -7,6 +7,7 @@ add_executable(startracker
 src/main.cpp
 src/reader.cpp
 src/processor.cpp
+src/config.cpp
 )
 
 target_link_libraries(startracker 

@@ -8,11 +8,7 @@
 
 #include "include/globals.h"
 #include "include/processor.hpp"
-
-
-//int processor_ms = 1000;
-static constexpr double TRACKER_HZ = 1.0;
-static constexpr auto TRACKER_PERIOD = std::chrono::milliseconds(static_cast<int>(1000.0 / TRACKER_HZ));
+#include "include/config.hpp"
 
 
 
@@ -25,8 +21,8 @@ cv::Mat get_frame_safe(){ //critial section (return the clone of the latestframe
 void preprocess_frame(cv::Mat &frame, double &ts){ // preporcessing each frame
     cv::Mat gray, blurred, bw;
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY); //gray scale
-    cv::GaussianBlur(gray, blurred, cv::Size(5,5), 1.0); //induced blur
-    cv::threshold(blurred, bw, 200, 255, cv::THRESH_BINARY); //any dot above 200 gets full brightness 255 rest full black.
+    cv::GaussianBlur(gray, blurred, cv::Size(processor_cfg.cv.blur_ksize,processor_cfg.cv.blur_ksize), processor_cfg.cv.blur_sigma); //induced blur
+    cv::threshold(blurred, bw, processor_cfg.cv.threshold, 255, cv::THRESH_BINARY); //any dot above 200 gets full brightness 255 rest full black.
     int bright = cv::countNonZero(bw); // count white dots
 
     std::cout << "[Tracker] t=" << ts << "s | size="
@@ -39,13 +35,14 @@ void processor_thread(){
     double tsec = 0.0;
     while (running.load())
     {
-        auto next = std::chrono::steady_clock::now() + TRACKER_PERIOD;
+        auto next = std::chrono::steady_clock::now() + processor_cfg.period;
         std::this_thread::sleep_until(next);
 
         if(!frameready.load()){
         std::cout << "[Tracker] No frame ready yet, skipping tick.\n";
-        next += TRACKER_PERIOD;
-        tsec += std::chrono::duration_cast<std::chrono::duration<double>>(TRACKER_PERIOD).count();
+        next += processor_cfg.period;
+        tsec += std::chrono::duration_cast<std::chrono::duration<double>>(processor_cfg.period).count();
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));//avoid busy-waiting need to change it to condition variable
         continue;
         }
 
@@ -56,16 +53,17 @@ void processor_thread(){
 
         if (frame_cpy_local.empty()) {
             std::cout << "[Tracker] Frame was empty after grabbing, skipping.\n";
-            next += TRACKER_PERIOD;
-            tsec += std::chrono::duration_cast<std::chrono::duration<double>>(TRACKER_PERIOD).count();
+            next += processor_cfg.period;
+            tsec += std::chrono::duration_cast<std::chrono::duration<double>>(processor_cfg.period).count();
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));////avoid busy-waiting need to change it to condition variable
             continue;
         }
 
         preprocess_frame(frame_cpy_local, tsec); //processing level -0
 
         //advance time with period for next wait_until(next)
-        next += TRACKER_PERIOD;
-        tsec += std::chrono::duration_cast<std::chrono::duration<double>>(TRACKER_PERIOD).count();
+        next += processor_cfg.period;
+        tsec += std::chrono::duration_cast<std::chrono::duration<double>>(processor_cfg.period).count();
         //std::cout<<"Processor Frame : "<<frame_cpy_local.cols<<" x "<<frame_cpy_local.rows<<"\n";
     }
     std::cout << "[Tracker] exiting.\n"; //debug exit
