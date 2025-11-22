@@ -1,0 +1,63 @@
+# === CMAKE BUILD FILES ===
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# === BINARY OUTPUTS ===
+*.out
+*.exe
+*.bin
+*.a
+*.so
+startracker
+
+# === EDITOR & IDE FILES ===
+.vscode/
+.idea/
+*.code-workspace
+*.suo
+*.user
+*.userprefs
+*.obj
+*.temp.cpp
+
+# === UNITY GENERATED FILES (if Unity project included) ===
+Library/
+Temp/
+Obj/
+Logs/
+UserSettings/
+MemoryCaptures/
+Build/
+Builds/
+*.csproj
+*.sln
+*.unityproj
+*.pidb
+*.booproj
+
+# === OS / SYSTEM FILES ===
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# === IMAGE FRAMES FROM CAMERA ===
+*.png
+*.jpg
+frames/
+captures/
+
+# === PYTHON (if used later) ===
+.venv/
+env/
+venv/
+__pycache__/
+*.pyc
+
+# === LOG FILES ===
+*.log
+*.trace
