@@ -1,15 +1,14 @@
 // Processing Thread
-#include "include/processor.hpp"
 #include<iostream>
 #include<opencv2/opencv.hpp>
 #include<thread>
 #include<chrono>
 #include<atomic>
+#include<mutex>
 
-extern cv::Mat latestframe;
-extern std::mutex M_latestframe;
-extern std::atomic<bool> running;
-extern std::atomic<bool> frameready;
+#include "include/globals.h"
+#include "include/processor.hpp"
+
 
 //int processor_ms = 1000;
 static constexpr double TRACKER_HZ = 1.0;
@@ -38,7 +37,7 @@ void preprocess_frame(cv::Mat &frame, double &ts){ // preporcessing each frame
 void processor_thread(){ 
     //  !frameready.load()continue -> get_frame_safe() -> frame_cpy_local.empty()continue -> preprocess_frame()
     double tsec = 0.0;
-    while (running)
+    while (running.load())
     {
         auto next = std::chrono::steady_clock::now() + TRACKER_PERIOD;
         std::this_thread::sleep_until(next);
