@@ -19,7 +19,6 @@ void image_reader_thread(cv::Mat &frameout, std::atomic<bool> &f_readyFlag){
         auto next = std::chrono::steady_clock::now() + reader_cfg.period;
         std::this_thread::sleep_until(next);//sync to period
 
-        
         img = cv::imread(reader_cfg.file_path, cv::IMREAD_COLOR);
         if (img.empty()){
             std::this_thread::sleep_for(std::chrono::milliseconds(reader_cfg.period));

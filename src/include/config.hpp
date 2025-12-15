@@ -12,7 +12,8 @@ static constexpr auto PROCESSOR_PERIOD = std::chrono::milliseconds(static_cast<i
 
 struct ReaderConfig{
     std::string source = "file";
-    std::string file_path = "/tmp/startracker_frame.png";
+    //std::string file_path = "/tmp/startracker_frame.png";
+    std::string file_path = "../docs/debug_SAMPLE_frame.png";
     int expected_width = 256;
     int expected_height = 256;
     double frequency = 33.0;
@@ -24,6 +25,8 @@ struct cvConfig
     int threshold = 200;
     int blur_ksize = 5;
     double blur_sigma = 1.0;
+    int area_max = 2000;
+    bool window_debug = true;
 };
 
 

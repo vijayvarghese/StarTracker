@@ -1,6 +1,7 @@
 # === CMAKE BUILD FILES ===
 build/
 docs/
+config/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
