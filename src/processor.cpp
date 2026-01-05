@@ -38,7 +38,7 @@ std::vector<cv::Point2d> get_centroids(const cv::Mat &BW, const double &ts){
 
     std::vector<cv::Point2d> temp_centroid;
 
-    for (int i = 1; i<=n; i++){
+    for (int i = 1; i<n; i++){
         int area = stats.at<int>(i, cv::CC_STAT_AREA);
         if (area < 1 || area > processor_cfg.cv.area_max)continue;
         
@@ -50,6 +50,18 @@ std::vector<cv::Point2d> get_centroids(const cv::Mat &BW, const double &ts){
               << " | stars=" << temp_centroid.size()
               << " | size=" << BW.cols << "x" << BW.rows
               << std::endl;
+
+    // just to print the cnetroids on console....
+
+    int idx = 0;
+    for (const auto& c : temp_centroid) {
+    std::cout << "[Tracker] [Centroid] centroid[" << idx++ << "] = ("
+              << c.x << ", " << c.y << ")\n";
+    }
+    //the above line of code from int idx is debug....
+    
+              
+
     return temp_centroid;
 }
 
@@ -73,6 +85,50 @@ cv::Mat debug_pngexport(const std::vector<cv::Point2d> &star_centroids, const cv
     return temp;
 }
 
+// Assumption - using pin hole camera model
+// Assumption - body frame is alliged with the camera frame... 
+//              ->  body frame z axix is same as the camera z axis (focal axis, perpenticulr to the image plane.) 
+
+// Phase 0 Validation 
+//   -> Steady frame with 2 stars
+//   -> docs/star_latest_Phase0Validation_Debug_.png
+//   -> Ray forming and normalizing....
+
+
+cv::Vec3d pixel_to_body_ray(
+    double u, double v,
+    double fx, double fy,
+    double cx, double cy)
+{
+    cv::Vec3d r;
+    r[0] = (u - cx) / fx;
+    r[1] = (v - cy) / fy;
+    r[2] = 1.0;
+    
+    return cv::normalize(r);
+}
+
+// Phase 1 validation 
+//   -> Angular separation validation
+//   ->
+
+
+// THIS IS A SAMPLE IMPLEMENTATION OF ANGLE BETWEEN CALCULATION 
+// only use this with 2 centroid debug image !!!!!!!!!!!!
+double angle_between(const cv::Vec3d& a, const cv::Vec3d& b)
+{
+    double dot = a.dot(b);
+    dot = std::clamp(dot, -1.0, 1.0);
+    return std::acos(dot) * 180.0 / CV_PI;
+}
+
+
+
+
+
+
+
+
 void processor_thread(){ 
     //  !frameready.load()continue -> get_frame_safe() -> frame_cpy_local.empty()continue -> preprocess_frame()
     double tsec = 0.0;
@@ -87,6 +143,9 @@ void processor_thread(){
     {
         cv::Mat frame_cpy_local, preprocess_ed_frame;
         std::vector<cv::Point2d> centroids;
+        std::vector<cv::Vec3d> ray;
+        std::vector<double> theta_vec;
+        cv::Vec3d temp_ray; 
         std::this_thread::sleep_until(next);
 
         if(!frameready.load()){
@@ -110,8 +169,39 @@ void processor_thread(){
         preprocess_ed_frame = preprocess_frame(frame_cpy_local, tsec); //processing level -0
         centroids = get_centroids(preprocess_ed_frame, tsec);
         
+        
+
+        //optimize the below for loops 
+        //  --> loop one - find camera/body ray for each centroid
+
+
+        // loop one - camera/body ray for each centroid
+        // returns a std::vector<cv::Vec3d> ray
+        for (const auto& c : centroids) {
+            std::cout << "[Tracker] [Centroid] "<< "("<< c.x << ", " << c.y << ")\n";
+            temp_ray = pixel_to_body_ray(c.x,c.y,camera_intr_cfg.fx,camera_intr_cfg.fy,camera_intr_cfg.cx,camera_intr_cfg.cy);
+
+            std::cout << "[Tracker] [Centroid] [Ray] = ("<< temp_ray[0] << ", " << temp_ray[1] << ", " <<temp_ray[2]<< ")\n";
+            ray.emplace_back(temp_ray);
+        }
+
 
         
+        //SAMPLE Angular separation implimentation USE ONLY WITH 2 CENTROIDS ALONE !!!!!!! 
+        
+        //std::cout << "[Tracker] [Centroid] [Ray] = ("<< ray[0] << "), (" << ray[1] << "), Angular separation -> " <<angle_between(ray[0],ray[1])<< "\n";
+        
+        for (int i = 0; i <= ray.size(); i++){
+            for (int j = i+1; j < ray.size(); j++){
+                theta_vec.emplace_back(angle_between(ray[i],ray[j+1]));   
+                std::cout << "[Tracker] [Centroid] [Ray] ["<<i<<","<<j<<"]= ("<< ray[i] << "), (" << ray[j] << "), Angular separation -> " <<angle_between(ray[i],ray[j])<< "\n";
+            }
+        }
+
+
+
+
+
         if (processor_cfg.cv.window_debug){
             cv::namedWindow("Unity Frame", cv::WINDOW_AUTOSIZE);
             cv::namedWindow("Preprocessed", cv::WINDOW_AUTOSIZE);

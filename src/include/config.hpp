@@ -13,12 +13,26 @@ static constexpr auto PROCESSOR_PERIOD = std::chrono::milliseconds(static_cast<i
 struct ReaderConfig{
     std::string source = "file";
     //std::string file_path = "/tmp/startracker_frame.png";
-    std::string file_path = "../docs/debug_SAMPLE_frame.png";
-    int expected_width = 256;
-    int expected_height = 256;
+    //std::string file_path = "../docs/star_latest_Phase0Validation_Debug_.png";
+    //std::string file_path = "/tmp/star_latest.png";
+    std::string file_path = "../docs/Unity Frame_screenshot_04.01.2026.png";
+    int expected_width = 1024;
+    int expected_height = 1024;
     double frequency = 33.0;
     std::chrono::milliseconds period = READER_PERIOD;
 };
+
+
+struct CameraIntrinsic
+{
+    
+   double fx = 2522;
+   double fy = 2522;
+   double cx = 512;
+   double cy = 512;
+
+};
+
 
 struct cvConfig
 {
@@ -29,6 +43,11 @@ struct cvConfig
     bool window_debug = true;
 };
 
+struct pinhole_cam_intresic
+{
+    /* data */
+};
+
 
 struct ProcessorConfig {
     double frequency = 1.0;
@@ -36,6 +55,6 @@ struct ProcessorConfig {
     std::chrono::milliseconds period = PROCESSOR_PERIOD;
 };
 
-
+extern const CameraIntrinsic camera_intr_cfg;
 extern const ReaderConfig reader_cfg;
 extern const ProcessorConfig processor_cfg;
