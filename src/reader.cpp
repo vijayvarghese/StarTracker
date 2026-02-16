@@ -9,7 +9,7 @@
 #include "include/globals.h"
 #include "include/reader.hpp"
 #include "include/config.hpp"
-
+#include "include/logger.hpp"
 
 void image_reader_thread(cv::Mat &frameout, std::atomic<bool> &f_readyFlag){
     
@@ -32,11 +32,11 @@ void image_reader_thread(cv::Mat &frameout, std::atomic<bool> &f_readyFlag){
         { // Critical section.. 
         std::lock_guard<std::mutex> locklatest(M_latestframe);
         frameout = img.clone();
-        //std::cout<<"frame updated (Reader) "<<"  RES : "<<img.cols<<" x "<<img.rows<<"\n"; //for debug
+        //LOG_DEBUG<<"frame updated (Reader) "<<"  RES : "<<img.cols<<" x "<<img.rows; //for debug
         f_readyFlag = true;
         }
     }
-    std::cout << "[Reader] exiting.\n"; //debug exit
+    LOG_INFO << "[Reader] exiting.."; //debug exit
     {
     std::lock_guard<std::mutex> locklatest(M_latestframe);
     frameout = cv::Mat(); //invalidating frame on exit

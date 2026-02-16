@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(StarTracker)
+project(StarTracker C CXX)
 
 find_package(OpenCV REQUIRED)
 
@@ -8,6 +8,11 @@ src/main.cpp
 src/reader.cpp
 src/processor.cpp
 src/config.cpp
+src/logger.cpp
+)
+
+target_compile_options(startracker PRIVATE 
+    $<$<CONFIG:Debug>:-g -O0>
 )
 
 target_link_libraries(startracker 

@@ -5,28 +5,42 @@
 #include<chrono>
 #include<atomic>
 #include<mutex>
+#include <unordered_map>
 
 #include "include/globals.h"
 #include "include/processor.hpp"
 #include "include/config.hpp"
+#include "include/logger.hpp"
+
+//Struct to store the centroid and ray infor for an agular seperation 
+
+struct CentroidRayPair{
+    double angular_separation;
+    std::vector<cv::Point2d> centeroid_pair;
+    std::vector<cv::Vec3d> ray_pair;
+};
+std::vector<CentroidRayPair> AngularSeparationProfile;
 
 
 
-cv::Mat get_frame_safe(){ //critial section (return the clone of the latestframe as cv::Mat) implimentation @33
+
+cv::Mat get_frame_safe(){ //critical section (return the clone of the latestframe as cv::Mat) implimentation @33
     std::lock_guard<std::mutex> local_cpy_lock(M_latestframe);
     if(latestframe.empty()) return cv::Mat();
     return latestframe.clone();
 }
 
-cv::Mat preprocess_frame(cv::Mat &frame, double &ts){ // preporcessing each frame
+cv::Mat preprocess_frame(cv::Mat &frame, double &ts){ // preprocessing each frame
     cv::Mat gray, blurred, bw;
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY); //gray scale
     cv::GaussianBlur(gray, blurred, cv::Size(processor_cfg.cv.blur_ksize,processor_cfg.cv.blur_ksize), processor_cfg.cv.blur_sigma); //induced blur
     cv::threshold(blurred, bw, processor_cfg.cv.threshold, 255, cv::THRESH_BINARY); //any dot above 200 gets full brightness 255 rest full black.
     int bright = cv::countNonZero(bw); // count white dots
-    std::cout << "[Tracker] [Preprocessing] t=" << ts << "s | size="
+    if (processor_centeroid_debug){
+    LOG_DEBUG << "[Tracker] [Preprocessing] t=" << ts << "s | size="
               << frame.cols << "x" << frame.rows
-              << " | bright_pixels=" << bright << std::endl;
+              << " | bright_pixels=" << bright;
+    }
     return bw;
 }
 
@@ -46,17 +60,19 @@ std::vector<cv::Point2d> get_centroids(const cv::Mat &BW, const double &ts){
         double cy = centroids.at<double>(i,1);
         temp_centroid.emplace_back(cx,cy);
     }
-    std::cout << "[Tracker] [Centroid] t=" << ts
+    if(processor_centeroid_debug){
+    LOG_DEBUG << "[Tracker] [Centroid] t=" << ts
               << " | stars=" << temp_centroid.size()
-              << " | size=" << BW.cols << "x" << BW.rows
-              << std::endl;
+              << " | size=" << BW.cols << "x" << BW.rows;
+    }
 
-    // just to print the cnetroids on console....
-
+    // just to print the centroids on console....
+    if (processor_centeroid_debug){
     int idx = 0;
     for (const auto& c : temp_centroid) {
-    std::cout << "[Tracker] [Centroid] centroid[" << idx++ << "] = ("
-              << c.x << ", " << c.y << ")\n";
+    LOG_DEBUG << "[Tracker] [Centroid]"<< "Centroid[" << idx++ << "] = ("
+              << c.x << ", " << c.y << ")";
+    }
     }
     //the above line of code from int idx is debug....
     
@@ -86,8 +102,8 @@ cv::Mat debug_pngexport(const std::vector<cv::Point2d> &star_centroids, const cv
 }
 
 // Assumption - using pin hole camera model
-// Assumption - body frame is alliged with the camera frame... 
-//              ->  body frame z axix is same as the camera z axis (focal axis, perpenticulr to the image plane.) 
+// Assumption - body frame is aligned with the camera frame... 
+//              ->  body frame z axis is same as the camera z axis (focal axis, perpendicular to the image plane.) 
 
 // Phase 0 Validation 
 //   -> Steady frame with 2 stars
@@ -118,12 +134,17 @@ cv::Vec3d pixel_to_body_ray(
 double angle_between(const cv::Vec3d& a, const cv::Vec3d& b)
 {
     double dot = a.dot(b);
+
     dot = std::clamp(dot, -1.0, 1.0);
     return std::acos(dot) * 180.0 / CV_PI;
 }
 
 
+//Hypothesis
 
+
+//Pyramid method
+//bin lookup and finding base triangle candidates
 
 
 
@@ -134,6 +155,8 @@ void processor_thread(){
     double tsec = 0.0;
     auto next = std::chrono::steady_clock::now() + processor_cfg.period;
 
+    
+    
     //debug 
     bool flag_debug_png_export = false;  // to export only once 
 
@@ -146,10 +169,12 @@ void processor_thread(){
         std::vector<cv::Vec3d> ray;
         std::vector<double> theta_vec;
         cv::Vec3d temp_ray; 
+        CentroidRayPair pair;
+        
         std::this_thread::sleep_until(next);
 
         if(!frameready.load()){
-            std::cout << "[Tracker] No frame ready yet, skipping tick.\n";
+            LOG_WARN << "[Tracker] No frame ready yet, skipping tick.";
             std::this_thread::sleep_for(std::chrono::milliseconds(2));//avoid busy-waiting need to change it to condition variable
             goto advance;
         }
@@ -160,7 +185,7 @@ void processor_thread(){
         }
 
         if (frame_cpy_local.empty()) {
-            std::cout << "[Tracker] Frame was empty after grabbing, skipping.\n";
+            LOG_WARN << "[Tracker] Frame was empty after grabbing, skipping.";
             std::this_thread::sleep_for(std::chrono::milliseconds(2));////avoid busy-waiting need to change it to condition variable
             goto advance;
         }
@@ -178,23 +203,40 @@ void processor_thread(){
         // loop one - camera/body ray for each centroid
         // returns a std::vector<cv::Vec3d> ray
         for (const auto& c : centroids) {
-            std::cout << "[Tracker] [Centroid] "<< "("<< c.x << ", " << c.y << ")\n";
+            
             temp_ray = pixel_to_body_ray(c.x,c.y,camera_intr_cfg.fx,camera_intr_cfg.fy,camera_intr_cfg.cx,camera_intr_cfg.cy);
-
-            std::cout << "[Tracker] [Centroid] [Ray] = ("<< temp_ray[0] << ", " << temp_ray[1] << ", " <<temp_ray[2]<< ")\n";
-            ray.emplace_back(temp_ray);
+            if (processor_ray_debug){
+            LOG_DEBUG << "[Tracker] [Centroid] "<< "("<< c.x << ", " << c.y << ")";
+            LOG_DEBUG << "[Tracker] [Centroid] [Ray] = ("<< temp_ray[0] << ", " << temp_ray[1] << ", " <<temp_ray[2]<< ")";
+            }
+            //ray.emplace_back(temp_ray);
+            pair.centeroid_pair.emplace_back(c);
+            pair.ray_pair.emplace_back(temp_ray);
         }
+        
 
 
         
-        //SAMPLE Angular separation implimentation USE ONLY WITH 2 CENTROIDS ALONE !!!!!!! 
+        //SAMPLE Angular separation implementation USE ONLY WITH 2 CENTROIDS ALONE !!!!!!! 
         
-        //std::cout << "[Tracker] [Centroid] [Ray] = ("<< ray[0] << "), (" << ray[1] << "), Angular separation -> " <<angle_between(ray[0],ray[1])<< "\n";
+        //LOG_DEBUG << "[Tracker] [Centroid] [Ray] = ("<< ray[0] << "), (" << ray[1] << "), Angular separation -> " <<angle_between(ray[0],ray[1])<< "";
         
-        for (int i = 0; i <= ray.size(); i++){
-            for (int j = i+1; j < ray.size(); j++){
-                theta_vec.emplace_back(angle_between(ray[i],ray[j+1]));   
-                std::cout << "[Tracker] [Centroid] [Ray] ["<<i<<","<<j<<"]= ("<< ray[i] << "), (" << ray[j] << "), Angular separation -> " <<angle_between(ray[i],ray[j])<< "\n";
+        for (size_t i = 0; i < pair.ray_pair.size(); i++){
+            for (size_t j = i+1; j < pair.ray_pair.size(); j++){
+                //theta_vec.emplace_back(angle_between(ray[i],ray[j+1])); 
+                CentroidRayPair temp_profile;
+                double theta = angle_between(pair.ray_pair[i],pair.ray_pair[j]);  
+                temp_profile.ray_pair.emplace_back(pair.ray_pair[i]);
+                temp_profile.ray_pair.emplace_back(pair.ray_pair[j]);
+                temp_profile.centeroid_pair.emplace_back(pair.centeroid_pair[i]);
+                temp_profile.centeroid_pair.emplace_back(pair.centeroid_pair[j]);
+                temp_profile.angular_separation = theta;
+
+                AngularSeparationProfile.emplace_back(temp_profile);
+                
+                if (processor_angSep_debug){  
+                LOG_DEBUG << "[Tracker] [Centroid] [Ray] [Ang_Sep]["<<i<<","<<j<<"]= ("<< pair.ray_pair[i] << "), (" << pair.ray_pair[j] << "), Angular separation -> " <<theta<< "";
+                }
             }
         }
 
@@ -202,7 +244,7 @@ void processor_thread(){
 
 
 
-        if (processor_cfg.cv.window_debug){
+        if (processor_img_debug){
             cv::namedWindow("Unity Frame", cv::WINDOW_AUTOSIZE);
             cv::namedWindow("Preprocessed", cv::WINDOW_AUTOSIZE);
             cv::namedWindow("Centroid Debug", cv::WINDOW_AUTOSIZE);
@@ -215,11 +257,12 @@ void processor_thread(){
         }
 
 
+        AngularSeparationProfile.clear();
         advance:
         //advance time with period for next wait_until(next)
         next += processor_cfg.period;
         tsec += std::chrono::duration_cast<std::chrono::duration<double>>(processor_cfg.period).count();
-        //std::cout<<"Processor Frame : "<<frame_cpy_local.cols<<" x "<<frame_cpy_local.rows<<"\n";
+        //LOG_DEBUG<<"Processor Frame : "<<frame_cpy_local.cols<<" x "<<frame_cpy_local.rows<<"";
     }
-    std::cout << "[Tracker] exiting.\n"; //debug exit
+    LOG_INFO << "[Tracker] exiting."; //debug exit
 }

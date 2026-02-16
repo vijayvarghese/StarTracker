@@ -10,6 +10,11 @@ static constexpr double TRACKER_HZ = 1.0;
 static constexpr auto PROCESSOR_PERIOD = std::chrono::milliseconds(static_cast<int>(1000.0 / TRACKER_HZ));
 
 
+struct lookupconfig{
+    std::string binpath = "../data/processed/6.5/mag65_fov23.bin";
+    double lookup_precision = 0.01;
+};
+
 struct ReaderConfig{
     std::string source = "file";
     //std::string file_path = "/tmp/startracker_frame.png";
@@ -40,7 +45,7 @@ struct cvConfig
     int blur_ksize = 5;
     double blur_sigma = 1.0;
     int area_max = 2000;
-    bool window_debug = true;
+    bool window_debug = false;
 };
 
 struct pinhole_cam_intresic
@@ -55,6 +60,10 @@ struct ProcessorConfig {
     std::chrono::milliseconds period = PROCESSOR_PERIOD;
 };
 
+
+
+
+extern const lookupconfig lookup_cfg;
 extern const CameraIntrinsic camera_intr_cfg;
 extern const ReaderConfig reader_cfg;
 extern const ProcessorConfig processor_cfg;
