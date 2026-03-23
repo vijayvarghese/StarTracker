@@ -1,9 +1,29 @@
 import csv
+import argparse
 
-INPUT_FILE = "hipparcos-voidmain.csv"
-OUTPUT_FILE = "hipparcos_mag65.csv"
+parser = argparse.ArgumentParser(description="hipparcos-voidmain CSV file subset maker w.r.t MAG.")
+# Define positional arguments in the order they should be provided
+parser.add_argument("input_file", help="Path to the base CSV file")
+parser.add_argument("output_file", help="Path to save the new CSV")
+parser.add_argument("mag_limit", help="Magnitude threshold <6.5>")
 
-MAG_LIMIT = 6.5
+
+args = parser.parse_args()
+
+print(f"Reading from: {args.input_file}")
+print(f"Saving to: {args.output_file}")
+print(f"Mag Limit: {args.mag_limit}")
+
+
+
+#INPUT_FILE = "hipparcos-voidmain.csv"
+#OUTPUT_FILE = "hipparcos_mag65.csv"
+#MAG_LIMIT = 6.5
+
+
+INPUT_FILE = args.input_file
+OUTPUT_FILE = args.output_file
+MAG_LIMIT = float(args.mag_limit)
 
 count_in = 0
 count_out = 0
@@ -50,6 +70,6 @@ with open(INPUT_FILE, newline='', encoding="utf-8") as fin, \
             continue
 
 print(f"Total rows read     : {count_in}")
-print(f"Stars written (≤6.5): {count_out}")
+print(f"Stars written (≤{MAG_LIMIT}): {count_out}")
 print(f"Output file         : {OUTPUT_FILE}")
 

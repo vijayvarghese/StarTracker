@@ -6,7 +6,7 @@
 #include "include/globals.h"
 
 std::mutex LogMessage::log_mutex_;
-extern std::atomic<int> verbose_level;
+extern std::atomic<int> log_level;
 
 
 static const char* level_to_string(LogLevel lvl){
@@ -40,7 +40,7 @@ LogMessage::~LogMessage()
     auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(
                    now.time_since_epoch()).count();
 
-    switch(verbose_level.load())
+    switch(log_level.load())
     {
         case 0:
             std::cerr << stream_.str() << "\n";
