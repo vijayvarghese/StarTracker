@@ -6,11 +6,54 @@
 #include<atomic>
 #include<mutex>
 #include <unordered_map>
-
+#include <unordered_set>
 #include "include/globals.h"
 #include "include/processor.hpp"
 #include "include/config.hpp"
 #include "include/logger.hpp"
+
+
+//Macro to print AngularSepProfile Struct.
+#define PRINT_ANGULAR_SEP_PROFILE(profile_vec) \
+do { \
+    LOG_DEBUG << "=== AngularSeparationProfile [" << (profile_vec).size() << " profiles] ==="; \
+    for (size_t _pi = 0; _pi < (profile_vec).size(); _pi++) { \
+        const auto& _p = (profile_vec)[_pi]; \
+        LOG_DEBUG << "  ┌─ Profile [" << _pi << "]"; \
+        LOG_DEBUG << "  │  angle       : " << std::fixed << std::setprecision(4) \
+                  << _p.centroid_ray_profile.angular_separation << " deg"; \
+        \
+        LOG_DEBUG << "  │  centroids   : (" \ 
+                  << std::fixed << std::setprecision(2) << _p.centroid_ray_profile.centeroid_pair[0].x << ", " \
+                  << _p.centroid_ray_profile.centeroid_pair[0].y << ")  <-->  (" \
+                  << _p.centroid_ray_profile.centeroid_pair[1].x << ", " \
+                  << _p.centroid_ray_profile.centeroid_pair[1].y << ")"; \
+        \
+        LOG_DEBUG << "  │  rays        : [" \
+                  << std::setprecision(5) << _p.centroid_ray_profile.ray_pair[0][0] << ", " \
+                  << _p.centroid_ray_profile.ray_pair[0][1] << ", " \
+                  << _p.centroid_ray_profile.ray_pair[0][2] << "]  <-->  [" \
+                  << _p.centroid_ray_profile.ray_pair[1][0] << ", " \
+                  << _p.centroid_ray_profile.ray_pair[1][1] << ", " \
+                  << _p.centroid_ray_profile.ray_pair[1][2] << "]"; \
+        \
+        if (_p.candidate_pair.empty()) { \
+            LOG_DEBUG << "  │  candidates  : (none)"; \
+        } else { \
+            LOG_DEBUG << "  │  candidates  : " << _p.candidate_pair.size() << " pairs"; \
+        } \
+        LOG_DEBUG << "  └─────────────────────────────────"; \
+    } \
+} while(0)
+//macro End
+
+//            for (size_t _ci = 0; _ci < _p.candidate_pair.size(); _ci++) { \
+//                const char* _pfx = (_ci == _p.candidate_pair.size()-1) ? "  │      └─ " : "  │      ├─ "; \
+//                LOG_DEBUG << _pfx << "[" << _ci << "]  " \
+//                          << _p.candidate_pair[_ci].id1 << "  <-->  " \
+//                          << _p.candidate_pair[_ci].id2; \
+//            } \
+
 
 //Struct to store the centroid and ray infor for an agular seperation 
 
@@ -19,12 +62,21 @@ struct CentroidRayPair{
     std::vector<cv::Point2d> centeroid_pair;
     std::vector<cv::Vec3d> ray_pair;
 };
-std::vector<CentroidRayPair> AngularSeparationProfile;
+
+
+// Creating a struct to hold CentroidRayPair and the bin (Candidate pair list)
+struct AngularSep_Profile_fields{
+    CentroidRayPair centroid_ray_profile;
+    std::vector<StarPair> candidate_pair; 
+};
+
+
+std::vector<AngularSep_Profile_fields> AngularSeparationProfile;
 
 
 
 
-cv::Mat get_frame_safe(){ //critical section (return the clone of the latestframe as cv::Mat) implimentation @33
+cv::Mat get_frame_safe(){ //critical section (return the clone of the latestframe as cv::Mat) implementation @33
     std::lock_guard<std::mutex> local_cpy_lock(M_latestframe);
     if(latestframe.empty()) return cv::Mat();
     return latestframe.clone();
@@ -144,7 +196,165 @@ double angle_between(const cv::Vec3d& a, const cv::Vec3d& b)
 
 
 //Pyramid method
-//bin lookup and finding base triangle candidates
+//bin lookup 
+bool look_it_up(std::vector<AngularSep_Profile_fields>& profiles, const std::unordered_map<int,std::vector<StarPair>>& lookup_){
+
+    for (auto& a : profiles){
+        int center_bin = (int) std::round(a.centroid_ray_profile.angular_separation / lookup_cfg.lookup_precision);
+        for(int offset = -lookup_cfg.tolerance; offset <= lookup_cfg.tolerance; ++offset){
+            int bin = center_bin + offset;
+            auto it = lookup_.find(bin);
+            if(it != lookup_.end()){
+                const auto& can = it->second;
+                a.candidate_pair.insert(a.candidate_pair.end(), can.begin(),can.end());
+            }
+        }
+    }
+    return true;
+}
+
+
+//finding base triangle candidates
+//For now runnign voting for all centeroids 
+
+// comparator so cv::Point2d can be used as a std::map key
+struct Point2dCmp {
+    bool operator()(const cv::Point2d& a, const cv::Point2d& b) const {
+        if (a.x != b.x) return a.x < b.x;
+        return a.y < b.y;
+    }
+};
+
+// result per centroid
+struct StarHypothesis {
+    cv::Point2d centroid;          // the pixel coordinate
+    cv::Vec3d   ray;               // its body-frame ray
+    std::string hip_id;            // winning HIP ID
+    int         vote_count;        // how many votes it got
+    int         second_vote_count; // runner-up votes (for ambiguity check)
+    bool        confident;         // true if vote_count == N-1 and no tie
+};
+
+std::vector<StarHypothesis> vote_and_hypothesize(
+    const std::vector<AngularSep_Profile_fields>& profiles,
+    int N)  // number of detected centroids — 9 in your case
+{
+    const int required = N - 1;  // 8
+
+    // star_votes[pixel_coord][hip_id] = count
+    std::map<cv::Point2d,
+             std::unordered_map<std::string, int>,
+             Point2dCmp> star_votes;
+
+    // also keep a reverse map pixel → ray
+    // so we can populate StarHypothesis.ray without re-searching
+    std::map<cv::Point2d, cv::Vec3d, Point2dCmp> centroid_ray_map;
+
+    // ── cast votes across all 36 profiles ──────────────────────────
+    for (const auto& prof : profiles) {
+    const cv::Point2d& ci = prof.centroid_ray_profile.centeroid_pair[0];
+    const cv::Point2d& cj = prof.centroid_ray_profile.centeroid_pair[1];
+
+    // collect unique IDs seen in THIS profile for ci and cj separately
+    std::unordered_set<std::string> seen_ci;
+    std::unordered_set<std::string> seen_cj;
+
+    for (const auto& sp : prof.candidate_pair) {
+        // ci could be either id1 or id2
+        seen_ci.insert(sp.id1);
+        seen_ci.insert(sp.id2);
+
+        // cj could be either id1 or id2
+        seen_cj.insert(sp.id1);
+        seen_cj.insert(sp.id2);
+    }
+
+    // now commit exactly ONE vote per unique ID per centroid per profile
+    for (const auto& id : seen_ci) star_votes[ci][id]++;
+    for (const auto& id : seen_cj) star_votes[cj][id]++;
+    }
+//debug
+{
+auto& last_bucket = star_votes.rbegin()->second;
+const auto& last_pixel = star_votes.rbegin()->first;
+
+// collect and sort
+std::vector<std::pair<int,std::string>> ranked;
+for (auto& [id, count] : last_bucket)
+    ranked.push_back({count, id});
+std::sort(ranked.rbegin(), ranked.rend());
+
+LOG_DEBUG << "[Diag] top 5 votes for ("
+          << last_pixel.x << ", " << last_pixel.y << "):";
+for (int k = 0; k < std::min(5, (int)ranked.size()); k++)
+    LOG_DEBUG << "[Diag]   " << ranked[k].second
+              << "  count=" << ranked[k].first;
+
+}
+    // ── find winner per centroid ────────────────────────────────────
+    std::vector<StarHypothesis> hypothesis;
+    hypothesis.reserve(star_votes.size());
+
+    for (auto& [pixel, id_map] : star_votes) {
+
+        std::string best_id, second_id;
+        int best_votes   = 0;
+        int second_votes = 0;
+
+        for (const auto& [id, count] : id_map) {
+            if (count > best_votes) {
+                second_votes = best_votes;
+                second_id    = best_id;
+                best_votes   = count;
+                best_id      = id;
+            } else if (count > second_votes) {
+                second_votes = count;
+                second_id    = id;
+            }
+        }
+
+        bool confident = (best_votes >= required) && (second_votes < required);
+
+        StarHypothesis h;
+        h.centroid          = pixel;
+        h.ray               = centroid_ray_map[pixel];
+        h.hip_id            = best_id;
+        h.vote_count        = best_votes;
+        h.second_vote_count = second_votes;
+        h.confident         = confident;
+
+        hypothesis.push_back(h);
+
+        // log each result
+        if (confident) {
+            LOG_INFO << "[Vote] (" << std::fixed << std::setprecision(1)
+                     << pixel.x << ", " << pixel.y << ")"
+                     << "  =>  " << best_id
+                     << "  votes=" << best_votes
+                     << "  2nd="   << second_votes;
+        } else {
+            LOG_WARN << "[Vote] (" << std::fixed << std::setprecision(1)
+                     << pixel.x << ", " << pixel.y << ")"
+                     << "  AMBIGUOUS"
+                     << "  best=" << best_votes
+                     << "  2nd="  << second_votes
+                     << "  required=" << required;
+        }
+    }
+
+    // summary line
+    int confident_count = 0;
+    for (const auto& h : hypothesis)
+        if (h.confident) confident_count++;
+
+    LOG_INFO << "[Vote] " << confident_count << "/" << N
+             << " centroids identified with confidence";
+
+    return hypothesis;
+}
+
+
+
 
 
 
@@ -225,23 +435,36 @@ void processor_thread(){
             for (size_t j = i+1; j < pair.ray_pair.size(); j++){
                 //theta_vec.emplace_back(angle_between(ray[i],ray[j+1])); 
                 CentroidRayPair temp_profile;
+                AngularSep_Profile_fields temp_fields;
                 double theta = angle_between(pair.ray_pair[i],pair.ray_pair[j]);  
                 temp_profile.ray_pair.emplace_back(pair.ray_pair[i]);
                 temp_profile.ray_pair.emplace_back(pair.ray_pair[j]);
                 temp_profile.centeroid_pair.emplace_back(pair.centeroid_pair[i]);
                 temp_profile.centeroid_pair.emplace_back(pair.centeroid_pair[j]);
                 temp_profile.angular_separation = theta;
-
-                AngularSeparationProfile.emplace_back(temp_profile);
-                
+                temp_fields.centroid_ray_profile = temp_profile;
+                AngularSeparationProfile.emplace_back(temp_fields);
+                //if (processor_AngProfile_debug){  
+                //PRINT_ANGULAR_SEP_PROFILE(AngularSeparationProfile);
+                //}
                 if (processor_angSep_debug){  
                 LOG_DEBUG << "[Tracker] [Centroid] [Ray] [Ang_Sep]["<<i<<","<<j<<"]= ("<< pair.ray_pair[i] << "), (" << pair.ray_pair[j] << "), Angular separation -> " <<theta<< "";
                 }
             }
         }
+        //debug
+LOG_DEBUG << "[Diag] profile count before lookup: "
+          << AngularSeparationProfile.size();
+// should always print 36, never 72/108/144...
 
+        look_it_up(AngularSeparationProfile, lookup);
+        if (processor_AngProfile_debug){  
+            PRINT_ANGULAR_SEP_PROFILE(AngularSeparationProfile);
+        }
 
+    
 
+        vote_and_hypothesize(AngularSeparationProfile,centroids.size());
 
 
         if (processor_img_debug){

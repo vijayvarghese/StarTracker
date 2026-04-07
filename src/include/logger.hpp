@@ -30,6 +30,9 @@ private:
 };
 
 
+
+
+
 #define LOG(level) LogMessage(LogLevel::level,__FILE__,__LINE__).stream()
 
 

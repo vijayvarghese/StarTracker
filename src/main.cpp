@@ -31,6 +31,7 @@ std::atomic<bool> processor_centeroid_debug = false; //debug flag for centroid a
 std::atomic<bool> processor_ray_debug = false;
 std::atomic<bool> processor_angSep_debug = false;
 std::atomic<bool> processor_img_debug = false;
+std::atomic<bool> processor_AngProfile_debug= false;
 std::atomic<int> log_level = 0;
 
 
@@ -86,6 +87,7 @@ void cap_args(int& argc, char** argv){
         else if (arg == "--debugr") processor_ray_debug = true; 
         else if (arg == "--debuga") processor_angSep_debug = true;
         else if (arg == "--debugimg") processor_img_debug = true;
+        else if (arg == "--debugap") processor_AngProfile_debug = true;
         else if (arg == "--log0") log_level = 0;
         else if (arg == "--log1") log_level = 1;
         else if (arg == "--log2") log_level = 2;

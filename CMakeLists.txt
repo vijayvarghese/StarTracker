@@ -3,6 +3,8 @@ project(StarTracker C CXX)
 
 find_package(OpenCV REQUIRED)
 
+add_subdirectory(scripts)
+
 add_executable(startracker 
 src/main.cpp
 src/reader.cpp
