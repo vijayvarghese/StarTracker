@@ -21,8 +21,8 @@ struct ReaderConfig{
     std::string source = "file";
     //std::string file_path = "/tmp/startracker_frame.png";
     //std::string file_path = "../docs/star_latest_Phase0Validation_Debug_.png";
-    std::string file_path = "/tmp/star_latest.png";
-    //std::string file_path = "../docs/Unity Frame_screenshot_04.01.2026.png";
+    //std::string file_path = "/tmp/star_latest.png";
+    std::string file_path = "../docs/Unity Frame_screenshot_04.01.2026.png";
     int expected_width = 1024;
     int expected_height = 1024;
     double frequency = 33.0;

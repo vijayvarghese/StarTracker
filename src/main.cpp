@@ -5,17 +5,17 @@
 #include<mutex>
 #include<chrono>
 #include<csignal>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <unordered_map>
+#include<fstream>
+#include<vector>
+#include<string>
+#include<unordered_map>
 
 
-#include "include/reader.hpp"
-#include "include/processor.hpp"
-#include "include/globals.h"
-#include "include/config.hpp"
-#include "include/logger.hpp"
+#include "reader.hpp"
+#include "processor.hpp"
+#include "globals.h"
+#include "config.hpp"
+#include "logger.hpp"
 
 
 

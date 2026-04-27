@@ -6,10 +6,10 @@
 #include<atomic>
 #include<opencv2/opencv.hpp>
 
-#include "include/globals.h"
-#include "include/reader.hpp"
-#include "include/config.hpp"
-#include "include/logger.hpp"
+#include "globals.h"
+#include "reader.hpp"
+#include "config.hpp"
+#include "logger.hpp"
 
 void image_reader_thread(cv::Mat &frameout, std::atomic<bool> &f_readyFlag){
     

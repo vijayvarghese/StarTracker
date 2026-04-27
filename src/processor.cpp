@@ -7,10 +7,10 @@
 #include<mutex>
 #include <unordered_map>
 #include <unordered_set>
-#include "include/globals.h"
-#include "include/processor.hpp"
-#include "include/config.hpp"
-#include "include/logger.hpp"
+#include "globals.h"
+#include "processor.hpp"
+#include "config.hpp"
+#include "logger.hpp"
 
 
 //Macro to print AngularSepProfile Struct.

@@ -2,8 +2,8 @@
 #include <chrono>
 #include <cstdlib>
 
-#include "include/logger.hpp"
-#include "include/globals.h"
+#include "logger.hpp"
+#include "globals.h"
 
 std::mutex LogMessage::log_mutex_;
 extern std::atomic<int> log_level;
