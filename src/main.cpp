@@ -9,6 +9,10 @@
 #include<vector>
 #include<string>
 #include<unordered_map>
+#include<fstream>
+
+#include"nlohmann/json.hpp"
+#include"tui.hpp"
 
 
 #include "reader.hpp"
@@ -33,6 +37,7 @@ std::atomic<bool> processor_angSep_debug = false;
 std::atomic<bool> processor_img_debug = false;
 std::atomic<bool> processor_AngProfile_debug= false;
 std::atomic<int> log_level = 0;
+bool use_tui = false;
 
 
 
@@ -88,6 +93,8 @@ void cap_args(int& argc, char** argv){
         else if (arg == "--debuga") processor_angSep_debug = true;
         else if (arg == "--debugimg") processor_img_debug = true;
         else if (arg == "--debugap") processor_AngProfile_debug = true;
+        else if (arg == "--tui") use_tui = true;
+
         else if (arg == "--log0") log_level = 0;
         else if (arg == "--log1") log_level = 1;
         else if (arg == "--log2") log_level = 2;
@@ -108,8 +115,23 @@ void signal_handler(int signal){
     }
 }
 
+nlohmann::json load_config_json(){
+    std::ifstream f("../../config/config.json");
+    return nlohmann::json::parse(f);;
+}
+
 
 int main(int argc, char* argv[]){
+
+
+
+    try {
+        auto config = load_config_json();
+        //std::cout << "Config load test -  " << config["reader"]["file"]["path"] << "\n";
+    }
+    catch (...) {
+        std::cerr << "An unknown error occurred while loading and parsing the json config file ! " << std::endl;
+    }
 
     //implement cap_arg
 
@@ -119,23 +141,12 @@ int main(int argc, char* argv[]){
 
     loadBin(lookup_cfg.binpath, lookup);
     
-//debug lookup load test.
 
-// auto it = lookup.find(134);
-
-// if (it == lookup.end()) {
-//     std::cout << "Key 134 not found\n";
-// } 
-// else if (it->second.empty()) {
-//     std::cout << "Key 134 exists but vector is empty\n";
-// } 
-// else {
-//     std::cout << it->second[0].id1 
-//               << " , " 
-//               << it->second[0].id2 
-//               << std::endl;
-// }
-//debug lookup load test end !!!
+    if (use_tui) {
+    TuiThread tui("StarTracker", "1.0.0");
+    tui.start();
+    tui.join();   // blocks here until user closes TUI
+}
 
     std::thread reader(image_reader_thread, std::ref(latestframe),std::ref(frameready));
     std::thread processor(processor_thread);

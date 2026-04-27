@@ -21,3 +21,4 @@ extern std::atomic<bool> processor_angSep_debug;
 extern std::atomic<bool> processor_img_debug;
 extern std::atomic<bool> processor_AngProfile_debug;
 extern std::atomic<int> log_level;
+extern std::atomic<bool> running;

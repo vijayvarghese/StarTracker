@@ -45,17 +45,9 @@ do { \
         LOG_DEBUG << "  └─────────────────────────────────"; \
     } \
 } while(0)
-//macro End
-
-//            for (size_t _ci = 0; _ci < _p.candidate_pair.size(); _ci++) { \
-//                const char* _pfx = (_ci == _p.candidate_pair.size()-1) ? "  │      └─ " : "  │      ├─ "; \
-//                LOG_DEBUG << _pfx << "[" << _ci << "]  " \
-//                          << _p.candidate_pair[_ci].id1 << "  <-->  " \
-//                          << _p.candidate_pair[_ci].id2; \
-//            } \
 
 
-//Struct to store the centroid and ray infor for an agular seperation 
+
 
 struct CentroidRayPair{
     double angular_separation;
@@ -284,12 +276,6 @@ for (auto& [id, count] : last_bucket)
     ranked.push_back({count, id});
 std::sort(ranked.rbegin(), ranked.rend());
 
-LOG_DEBUG << "[Diag] top 5 votes for ("
-          << last_pixel.x << ", " << last_pixel.y << "):";
-for (int k = 0; k < std::min(5, (int)ranked.size()); k++)
-    LOG_DEBUG << "[Diag]   " << ranked[k].second
-              << "  count=" << ranked[k].first;
-
 }
     // ── find winner per centroid ────────────────────────────────────
     std::vector<StarHypothesis> hypothesis;
@@ -324,31 +310,10 @@ for (int k = 0; k < std::min(5, (int)ranked.size()); k++)
         h.confident         = confident;
 
         hypothesis.push_back(h);
-
-        // log each result
-        if (confident) {
-            LOG_INFO << "[Vote] (" << std::fixed << std::setprecision(1)
-                     << pixel.x << ", " << pixel.y << ")"
-                     << "  =>  " << best_id
-                     << "  votes=" << best_votes
-                     << "  2nd="   << second_votes;
-        } else {
-            LOG_WARN << "[Vote] (" << std::fixed << std::setprecision(1)
-                     << pixel.x << ", " << pixel.y << ")"
-                     << "  AMBIGUOUS"
-                     << "  best=" << best_votes
-                     << "  2nd="  << second_votes
-                     << "  required=" << required;
-        }
     }
 
     // summary line
-    int confident_count = 0;
-    for (const auto& h : hypothesis)
-        if (h.confident) confident_count++;
 
-    LOG_INFO << "[Vote] " << confident_count << "/" << N
-             << " centroids identified with confidence";
 
     return hypothesis;
 }
@@ -380,6 +345,7 @@ void processor_thread(){
         std::vector<double> theta_vec;
         cv::Vec3d temp_ray; 
         CentroidRayPair pair;
+        std::vector<StarHypothesis> hypothesis;
         
         std::this_thread::sleep_until(next);
 
@@ -444,28 +410,26 @@ void processor_thread(){
                 temp_profile.angular_separation = theta;
                 temp_fields.centroid_ray_profile = temp_profile;
                 AngularSeparationProfile.emplace_back(temp_fields);
-                //if (processor_AngProfile_debug){  
-                //PRINT_ANGULAR_SEP_PROFILE(AngularSeparationProfile);
-                //}
+                if (processor_AngProfile_debug){  
+                PRINT_ANGULAR_SEP_PROFILE(AngularSeparationProfile);
+                }
                 if (processor_angSep_debug){  
                 LOG_DEBUG << "[Tracker] [Centroid] [Ray] [Ang_Sep]["<<i<<","<<j<<"]= ("<< pair.ray_pair[i] << "), (" << pair.ray_pair[j] << "), Angular separation -> " <<theta<< "";
                 }
             }
         }
-        //debug
-LOG_DEBUG << "[Diag] profile count before lookup: "
-          << AngularSeparationProfile.size();
-// should always print 36, never 72/108/144...
 
         look_it_up(AngularSeparationProfile, lookup);
         if (processor_AngProfile_debug){  
             PRINT_ANGULAR_SEP_PROFILE(AngularSeparationProfile);
         }
 
-    
+        hypothesis = vote_and_hypothesize(AngularSeparationProfile,centroids.size());
 
-        vote_and_hypothesize(AngularSeparationProfile,centroids.size());
-
+//        for(const auto& h : hypothesis){
+//        LOG_DEBUG << h.centroid << " : "<< h.hip_id << "; ("<<h.vote_count<<")\n";
+//        }
+//        LOG_DEBUG<<"--------------------------------------\n";
 
         if (processor_img_debug){
             cv::namedWindow("Unity Frame", cv::WINDOW_AUTOSIZE);

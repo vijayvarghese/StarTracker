@@ -4,6 +4,7 @@ reader.cpp
 processor.cpp
 config.cpp
 logger.cpp
+tui.cpp
 )
 
 target_include_directories(startracker PUBLIC 
@@ -17,6 +18,10 @@ target_compile_options(startracker PRIVATE
 target_link_libraries(startracker 
 ${OpenCV_LIBS}
 pthread
+nlohmann_json::nlohmann_json
+ftxui::screen
+ftxui::dom
+ftxui::component
 )
 
 add_compile_options(-Wall -Wextra -Wpedantic)

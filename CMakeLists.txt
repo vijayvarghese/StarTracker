@@ -6,7 +6,8 @@ find_package(OpenCV REQUIRED)
 
 add_subdirectory(src)
 add_subdirectory(scripts)
-
+add_subdirectory(external/nlohmann_json)
+add_subdirectory(external/ftxui)
 
 
 
