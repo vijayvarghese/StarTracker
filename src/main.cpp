@@ -108,10 +108,7 @@ void cap_args(int& argc, char** argv){
 //SIGINT handler function to set false on running atomic bool "running".
 void signal_handler(int signal){
     if(signal == SIGINT){
-        //std::cout<<"\nSIGINT received, stopping threads...\n";
-        LOG_INFO<<"SIGINT received, stopping threads...";
         running.store(false);
-        //LOG_FATAL<<"Test Abort";
     }
 }
 
@@ -123,8 +120,14 @@ nlohmann::json load_config_json(){
 
 int main(int argc, char* argv[]){
 
+    //SigINT handler 
+    //Lookup sigaction implimentation
+    signal(SIGINT, signal_handler);
 
+    //cap_arg
+    cap_args(argc, argv);
 
+    //Config LOad
     try {
         auto config = load_config_json();
         //std::cout << "Config load test -  " << config["reader"]["file"]["path"] << "\n";
@@ -133,28 +136,51 @@ int main(int argc, char* argv[]){
         std::cerr << "An unknown error occurred while loading and parsing the json config file ! " << std::endl;
     }
 
-    //implement cap_arg
-
-    cap_args(argc, argv);
-
-    signal(SIGINT, signal_handler);
-
+    //Loading lookup bin
     loadBin(lookup_cfg.binpath, lookup);
     
-
-    if (use_tui) {
-    TuiThread tui("StarTracker", "1.0.0");
-    tui.start();
-    tui.join();   // blocks here until user closes TUI
-}
-
-    std::thread reader(image_reader_thread, std::ref(latestframe),std::ref(frameready));
-    std::thread processor(processor_thread);
+    //
+    std::vector<std::thread> threads;
+    try
+    {
+        threads.emplace_back(image_reader_thread, std::ref(latestframe),std::ref(frameready));
+        threads.emplace_back(processor_thread);
+    }
+    catch(const std::exception& e)
+    {
+        running.store(false);
+        for (auto& t : threads)
+            if (t.joinable()) t.join();
+        std::cerr << "Reader And Processor" << e.what() << '\n';
+        throw;
+    }
     
-    if(reader.joinable()) reader.join();
-    if(processor.joinable())processor.join();
 
-    //std::cout<<"Exited !!! \n";
+    try {
+        if (use_tui) {
+            TuiThread tui("StarTracker", "1.0.0");
+            tui.start();
+            tui.join();
+            running.store(false);
+        } else {
+            while (running.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        running.store(false);
+        for (auto& t : threads)
+            if (t.joinable()) t.join();
+        std::cerr << "TUI" << e.what() << '\n';
+        throw;
+    }
+
+
+    for (auto& t : threads)
+        if (t.joinable()) t.join();
+
+
     LOG_INFO<<"Exited !!! ";
     return 0;
 }

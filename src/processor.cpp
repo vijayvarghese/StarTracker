@@ -63,7 +63,7 @@ struct AngularSep_Profile_fields{
 };
 
 
-std::vector<AngularSep_Profile_fields> AngularSeparationProfile;
+//std::vector<AngularSep_Profile_fields> AngularSeparationProfile;
 
 
 
@@ -342,17 +342,18 @@ void processor_thread(){
         cv::Mat frame_cpy_local, preprocess_ed_frame;
         std::vector<cv::Point2d> centroids;
         std::vector<cv::Vec3d> ray;
-        std::vector<double> theta_vec;
         cv::Vec3d temp_ray; 
         CentroidRayPair pair;
         std::vector<StarHypothesis> hypothesis;
+        std::vector<AngularSep_Profile_fields> AngularSeparationProfile;
         
         std::this_thread::sleep_until(next);
 
         if(!frameready.load()){
             LOG_WARN << "[Tracker] No frame ready yet, skipping tick.";
             std::this_thread::sleep_for(std::chrono::milliseconds(2));//avoid busy-waiting need to change it to condition variable
-            goto advance;
+            next += processor_cfg.period;
+            continue;
         }
 
         
@@ -363,7 +364,8 @@ void processor_thread(){
         if (frame_cpy_local.empty()) {
             LOG_WARN << "[Tracker] Frame was empty after grabbing, skipping.";
             std::this_thread::sleep_for(std::chrono::milliseconds(2));////avoid busy-waiting need to change it to condition variable
-            goto advance;
+            next += processor_cfg.period;
+            continue;
         }
 
 
@@ -398,8 +400,7 @@ void processor_thread(){
         //LOG_DEBUG << "[Tracker] [Centroid] [Ray] = ("<< ray[0] << "), (" << ray[1] << "), Angular separation -> " <<angle_between(ray[0],ray[1])<< "";
         
         for (size_t i = 0; i < pair.ray_pair.size(); i++){
-            for (size_t j = i+1; j < pair.ray_pair.size(); j++){
-                //theta_vec.emplace_back(angle_between(ray[i],ray[j+1])); 
+            for (size_t j = i+1; j < pair.ray_pair.size(); j++){ 
                 CentroidRayPair temp_profile;
                 AngularSep_Profile_fields temp_fields;
                 double theta = angle_between(pair.ray_pair[i],pair.ray_pair[j]);  
@@ -426,7 +427,7 @@ void processor_thread(){
 
         hypothesis = vote_and_hypothesize(AngularSeparationProfile,centroids.size());
 
-//        for(const auto& h : hypothesis){
+//       for(const auto& h : hypothesis){
 //        LOG_DEBUG << h.centroid << " : "<< h.hip_id << "; ("<<h.vote_count<<")\n";
 //        }
 //        LOG_DEBUG<<"--------------------------------------\n";
@@ -445,7 +446,7 @@ void processor_thread(){
 
 
         AngularSeparationProfile.clear();
-        advance:
+
         //advance time with period for next wait_until(next)
         next += processor_cfg.period;
         tsec += std::chrono::duration_cast<std::chrono::duration<double>>(processor_cfg.period).count();
