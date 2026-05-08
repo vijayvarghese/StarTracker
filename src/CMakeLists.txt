@@ -7,6 +7,8 @@ logger.cpp
 tui.cpp
 )
 
+target_compile_features(startracker PRIVATE cxx_std_20)
+
 target_include_directories(startracker PUBLIC 
     "${PROJECT_SOURCE_DIR}/include"
 )

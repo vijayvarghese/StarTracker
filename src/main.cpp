@@ -10,6 +10,7 @@
 #include<string>
 #include<unordered_map>
 #include<fstream>
+#include<memory>
 
 #include"nlohmann/json.hpp"
 #include"tui.hpp"
@@ -23,11 +24,14 @@
 
 
 
-cv::Mat latestframe;
-std::mutex M_latestframe;
+//cv::Mat latestframe;
+//std::mutex M_latestframe;
+//std::shared_ptr<cv::Mat> latest_frame;
 std::atomic<bool> running{true};
-std::atomic<bool> frameready{false};
+//std::atomic<bool> frameready{false};
 std::unordered_map<int, std::vector<StarPair>> lookup;
+std::atomic<std::shared_ptr<cv::Mat>> latest_frame{nullptr};
+
 
 
 //debug flags from runtime args
@@ -136,6 +140,8 @@ int main(int argc, char* argv[]){
         std::cerr << "An unknown error occurred while loading and parsing the json config file ! " << std::endl;
     }
 
+    //std::atomic<std::shared_ptr<cv::Mat>> latest_frame;
+
     //Loading lookup bin
     loadBin(lookup_cfg.binpath, lookup);
     
@@ -143,8 +149,8 @@ int main(int argc, char* argv[]){
     std::vector<std::thread> threads;
     try
     {
-        threads.emplace_back(image_reader_thread, std::ref(latestframe),std::ref(frameready));
-        threads.emplace_back(processor_thread);
+        threads.emplace_back(image_reader_thread, std::ref(latest_frame));
+        threads.emplace_back(processor_thread, std::ref(latest_frame));
     }
     catch(const std::exception& e)
     {

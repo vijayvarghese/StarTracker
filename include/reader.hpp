@@ -5,4 +5,4 @@
 #include<atomic>
 
 
-void image_reader_thread(cv::Mat &frameout, std::atomic<bool> &f_readyFlag);
+void image_reader_thread(std::atomic<std::shared_ptr<cv::Mat>>& latest_frame);

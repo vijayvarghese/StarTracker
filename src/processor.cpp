@@ -68,13 +68,13 @@ struct AngularSep_Profile_fields{
 
 
 
-cv::Mat get_frame_safe(){ //critical section (return the clone of the latestframe as cv::Mat) implementation @33
-    std::lock_guard<std::mutex> local_cpy_lock(M_latestframe);
-    if(latestframe.empty()) return cv::Mat();
-    return latestframe.clone();
-}
+//cv::Mat get_frame_safe(){ //critical section (return the clone of the latestframe as cv::Mat) implementation @33
+//    std::lock_guard<std::mutex> local_cpy_lock(M_latestframe);
+//    if(latestframe.empty()) return cv::Mat();
+//    return latestframe.clone();
+//}
 
-cv::Mat preprocess_frame(cv::Mat &frame, double &ts){ // preprocessing each frame
+cv::Mat preprocess_frame(cv::Mat &frame, const double &ts){ // preprocessing each frame
     cv::Mat gray, blurred, bw;
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY); //gray scale
     cv::GaussianBlur(gray, blurred, cv::Size(processor_cfg.cv.blur_ksize,processor_cfg.cv.blur_ksize), processor_cfg.cv.blur_sigma); //induced blur
@@ -225,6 +225,7 @@ struct StarHypothesis {
     int         vote_count;        // how many votes it got
     int         second_vote_count; // runner-up votes (for ambiguity check)
     bool        confident;         // true if vote_count == N-1 and no tie
+    std::string hip_id_second_best;
 };
 
 std::vector<StarHypothesis> vote_and_hypothesize(
@@ -308,6 +309,8 @@ std::sort(ranked.rbegin(), ranked.rend());
         h.vote_count        = best_votes;
         h.second_vote_count = second_votes;
         h.confident         = confident;
+        h.hip_id_second_best= second_id; //for later debug, remove if not implimented !! along with the second_id ref on top. 
+        
 
         hypothesis.push_back(h);
     }
@@ -325,7 +328,7 @@ std::sort(ranked.rbegin(), ranked.rend());
 
 
 
-void processor_thread(){ 
+void processor_thread(std::atomic<std::shared_ptr<cv::Mat>>& latest_frame){ 
     //  !frameready.load()continue -> get_frame_safe() -> frame_cpy_local.empty()continue -> preprocess_frame()
     double tsec = 0.0;
     auto next = std::chrono::steady_clock::now() + processor_cfg.period;
@@ -339,7 +342,8 @@ void processor_thread(){
 
     while (running.load())
     {
-        cv::Mat frame_cpy_local, preprocess_ed_frame;
+        auto frame = latest_frame.load(std::memory_order_acquire);
+        cv::Mat preprocess_ed_frame;
         std::vector<cv::Point2d> centroids;
         std::vector<cv::Vec3d> ray;
         cv::Vec3d temp_ray; 
@@ -349,25 +353,32 @@ void processor_thread(){
         
         std::this_thread::sleep_until(next);
 
-        if(!frameready.load()){
-            LOG_WARN << "[Tracker] No frame ready yet, skipping tick.";
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));//avoid busy-waiting need to change it to condition variable
-            next += processor_cfg.period;
+        //if(!frameready.load()){
+        //    LOG_WARN << "[Tracker] No frame ready yet, skipping tick.";
+        //    std::this_thread::sleep_for(std::chrono::milliseconds(2));//avoid busy-waiting need to change it to condition variable
+        //    next += processor_cfg.period;
+        //    continue;
+        //}
+//
+        //
+        //{ //Critical Section safe function call @16
+        //    frame_cpy_local = get_frame_safe();
+        //}
+//
+        //if (frame_cpy_local.empty()) {
+        //    LOG_WARN << "[Tracker] Frame was empty after grabbing, skipping.";
+        //    std::this_thread::sleep_for(std::chrono::milliseconds(2));////avoid busy-waiting need to change it to condition variable
+        //    next += processor_cfg.period;
+        //    continue;
+        //}
+
+        if (!frame) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
             continue;
         }
 
-        
-        { //Critical Section safe function call @16
-            frame_cpy_local = get_frame_safe();
-        }
-
-        if (frame_cpy_local.empty()) {
-            LOG_WARN << "[Tracker] Frame was empty after grabbing, skipping.";
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));////avoid busy-waiting need to change it to condition variable
-            next += processor_cfg.period;
-            continue;
-        }
-
+        //Clone only if needed
+        cv::Mat frame_cpy_local = frame->clone();
 
         preprocess_ed_frame = preprocess_frame(frame_cpy_local, tsec); //processing level -0
         centroids = get_centroids(preprocess_ed_frame, tsec);

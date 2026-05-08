@@ -5,13 +5,15 @@
 #include<mutex>
 #include<atomic>
 #include<opencv2/opencv.hpp>
+#include<memory>
+
 
 #include "globals.h"
 #include "reader.hpp"
 #include "config.hpp"
 #include "logger.hpp"
 
-void image_reader_thread(cv::Mat &frameout, std::atomic<bool> &f_readyFlag){
+void image_reader_thread(std::atomic<std::shared_ptr<cv::Mat>>& latest_frame){
     
     cv::Mat img;
     while (running.load())
@@ -29,16 +31,24 @@ void image_reader_thread(cv::Mat &frameout, std::atomic<bool> &f_readyFlag){
             continue;
         }
         
-        { // Critical section.. 
-        std::lock_guard<std::mutex> locklatest(M_latestframe);
-        frameout = img.clone();
-        //LOG_DEBUG<<"frame updated (Reader) "<<"  RES : "<<img.cols<<" x "<<img.rows; //for debug
-        f_readyFlag = true;
-        }
+        //{ // Critical section.. 
+        //std::lock_guard<std::mutex> locklatest(M_latestframe);
+        cv::Mat frame_in = img.clone();
+        ////LOG_DEBUG<<"frame updated (Reader) "<<"  RES : "<<img.cols<<" x "<<img.rows; //for debug
+        //f_readyFlag = true;
+        //}
+
+        auto new_frame = std::make_shared<cv::Mat>(std::move(frame_in));
+
+        // publish atomically
+        latest_frame.store(new_frame, std::memory_order_release);
+
+
+
     }
     LOG_INFO << "[Reader] exiting.."; //debug exit
     {
-    std::lock_guard<std::mutex> locklatest(M_latestframe);
-    frameout = cv::Mat(); //invalidating frame on exit
+    //std::lock_guard<std::mutex> locklatest(M_latestframe);
+    //frame_in = cv::Mat(); //invalidating frame on exit
     }
 }
