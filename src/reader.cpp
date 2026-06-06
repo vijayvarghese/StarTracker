@@ -1,27 +1,30 @@
 // Reader
-#include<iostream> //debug cout
 #include<thread>
 #include<chrono>
-#include<mutex>
 #include<atomic>
 #include<opencv2/opencv.hpp>
 #include<memory>
-
 
 #include "globals.h"
 #include "reader.hpp"
 #include "config.hpp"
 #include "logger.hpp"
+#include "types.hpp"
+#include "hal/ICamera.hpp"
 
-void image_reader_thread(std::atomic<std::shared_ptr<cv::Mat>>& latest_frame){
+
+
+
+void image_reader_thread(std::atomic<std::shared_ptr<cv::Mat>>& latest_frame, ST::ICamera& cam){
     
     cv::Mat img;
-    while (running.load())
+    while (ST::running.load())
     {
         auto next = std::chrono::steady_clock::now() + reader_cfg.period;
         std::this_thread::sleep_until(next);//sync to period
 
-        img = cv::imread(reader_cfg.file_path, cv::IMREAD_COLOR);
+        //img = cv::imread(reader_cfg.file_path, cv::IMREAD_COLOR);
+        img = cam.grabFrame();
         if (img.empty()){
             std::this_thread::sleep_for(std::chrono::milliseconds(reader_cfg.period));
             continue;  

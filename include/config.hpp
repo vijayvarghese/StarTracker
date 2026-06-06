@@ -1,6 +1,7 @@
 #pragma once
 #include<string>
 #include<chrono>
+#include "types.hpp"
 
 
 static constexpr double READER_HZ = 33.0;
@@ -13,8 +14,8 @@ static constexpr auto PROCESSOR_PERIOD = std::chrono::milliseconds(static_cast<i
 struct lookupconfig{
     //std::string binpath = "../data/processed/6.5/mag65_fov23.bin";
     std::string binpath = "../../data/processed/3/Hip_mag3_lookup_new_bin.bin";
-    double lookup_precision = 0.01;
-    int tolerance = 5;
+    double lookup_precision = 0.5;
+    int tolerance = 4;
 };
 
 struct ReaderConfig{
@@ -65,7 +66,12 @@ struct ProcessorConfig {
 
 
 
-extern const lookupconfig lookup_cfg;
-extern const CameraIntrinsic camera_intr_cfg;
-extern const ReaderConfig reader_cfg;
-extern const ProcessorConfig processor_cfg;
+extern lookupconfig lookup_cfg;
+extern CameraIntrinsic camera_intr_cfg;
+extern ReaderConfig reader_cfg;
+extern ProcessorConfig processor_cfg;
+
+/**
+ * @brief Initilize the config loader and set the global veriables.
+ */
+ConfigInitStatus config_init();

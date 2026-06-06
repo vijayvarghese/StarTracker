@@ -162,7 +162,7 @@ auto format_runtime = [&]() -> std::string {
     auto root = CatchEvent(ui, [&](Event e) {
         if (e == Event::Character('q') || e == Event::Character('Q')) {
             screen.ExitLoopClosure()();
-            running.store(false);
+            ST::running.store(false);
             return true;
         }
         if (e == Event::Character('i') || e == Event::Character('I')) {
@@ -171,7 +171,7 @@ auto format_runtime = [&]() -> std::string {
         }
         if (e == Event::Character('d')) {
             dbg_level = (dbg_level + 1) % 6;
-            log_level = dbg_level;
+            ST::log::log_level = dbg_level;
             return true;
         }
         if (e == Event::Character('D')) {

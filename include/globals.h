@@ -1,27 +1,26 @@
 #pragma once
-#include<opencv2/opencv.hpp>
-#include<atomic>
-#include<mutex>
-#include<memory>
+#include <atomic>
+#include <mutex>
+#include <memory>
+#include "types.hpp"
+#include <unordered_map>
+#include <vector>
 
 
-struct StarPair {
-    std::string id1;
-    std::string id2;
-};
 
 
-extern std::unordered_map<int, std::vector<StarPair>> lookup;
+namespace ST {
+    extern std::atomic<bool> running;
+    extern std::unordered_map<int, std::vector<StarPair>> lookup;
 
-//extern cv::Mat latestframe;
-//extern std::mutex M_latestframe;
-//extern std::atomic<std::shared_ptr<cv::Mat>> latest_frame;
-extern std::atomic<bool> running;
-//extern std::atomic<bool> frameready;
-extern std::atomic<bool> processor_centeroid_debug; 
-extern std::atomic<bool> processor_ray_debug;
-extern std::atomic<bool> processor_angSep_debug;
-extern std::atomic<bool> processor_img_debug;
-extern std::atomic<bool> processor_AngProfile_debug;
-extern std::atomic<int> log_level;
-extern std::atomic<bool> running;
+    namespace dbg {
+        extern std::atomic<bool> centroid; //processor_centroid_debug
+        extern std::atomic<bool> ray;  //processor_ray_debug
+        extern std::atomic<bool> ang_sep; //processor_angSep_debug
+        extern std::atomic<bool> img; //processor_img_debug
+        extern std::atomic<bool> ang_profile; //processor_AngProfile_debug
+    }
+    namespace log {
+        extern std::atomic<int> log_level;
+    }
+}
