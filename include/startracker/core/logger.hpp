@@ -1,7 +1,11 @@
 #pragma once
 #include <sstream>
 #include <mutex>
+#include <atomic>
 
+namespace ST::core::log {
+    extern std::atomic<int> log_level;
+}
 
 enum class LogLevel{
     DEBUG,

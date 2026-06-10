@@ -2,8 +2,7 @@
 #include <chrono>
 #include <cstdlib>
 
-#include "logger.hpp"
-#include "globals.h"
+#include "startracker/core/logger.hpp"
 
 std::mutex LogMessage::log_mutex_;
 
@@ -39,7 +38,7 @@ LogMessage::~LogMessage()
     auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(
                    now.time_since_epoch()).count();
 
-    switch(ST::log::log_level.load())
+    switch(ST::core::log::log_level.load())
     {
         case 0:
             std::cerr << stream_.str() << "\n";

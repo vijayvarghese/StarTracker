@@ -1,5 +1,6 @@
-#include "tui.hpp"
-#include "globals.h"
+#include "startracker/ui/tui.hpp"
+ //<atomic> running 
+#include "startracker/core/logger.hpp" //log_level
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
@@ -10,8 +11,8 @@
 
 using namespace ftxui;
 
-TuiThread::TuiThread(const std::string& name, const std::string& version)
-    : name_(name), version_(version) {}
+TuiThread::TuiThread(const std::string& name, const std::string& version, std::atomic<bool>& running)
+    : name_(name), version_(version), running_(running) {}
 
 void TuiThread::start() {
     thread_ = std::thread(&TuiThread::run, this);
@@ -162,7 +163,7 @@ auto format_runtime = [&]() -> std::string {
     auto root = CatchEvent(ui, [&](Event e) {
         if (e == Event::Character('q') || e == Event::Character('Q')) {
             screen.ExitLoopClosure()();
-            ST::running.store(false);
+            running_.store(false);
             return true;
         }
         if (e == Event::Character('i') || e == Event::Character('I')) {
@@ -171,7 +172,7 @@ auto format_runtime = [&]() -> std::string {
         }
         if (e == Event::Character('d')) {
             dbg_level = (dbg_level + 1) % 6;
-            ST::log::log_level = dbg_level;
+            ST::core::log::log_level = dbg_level;
             return true;
         }
         if (e == Event::Character('D')) {

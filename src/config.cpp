@@ -1,9 +1,11 @@
+/**
+ * @file config.cpp
+ */
 #include "config.hpp"
 #include <fstream>
 #include <string>
 #include "nlohmann/json.hpp"
 #include <iostream>
-#include "types.hpp"
 
 
 lookupconfig lookup_cfg{};
@@ -13,7 +15,7 @@ ProcessorConfig processor_cfg{};
 
 
 nlohmann::json load_config_json(){
-    std::ifstream f("../../config/config.json");
+    std::ifstream f("../../../config/config.json");
     return nlohmann::json::parse(f);;
 }
 

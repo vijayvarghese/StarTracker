@@ -1,8 +1,11 @@
-#pragma once
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp> 
+#include "startracker/util/dbg/debug_utils.hpp"
 
-cv::Mat debug_pngexport(const std::vector<cv::Point2d> &star_centroids, const cv::Mat &frame){
+namespace ST::dbg {
+
+cv::Mat debug_pngexport_centroids(const std::vector<cv::Point2d> &star_centroids, const cv::Mat &frame){
     int idx = 1;
     cv::Mat temp = frame.clone();
     for (auto &c : star_centroids) {
@@ -18,6 +21,8 @@ cv::Mat debug_pngexport(const std::vector<cv::Point2d> &star_centroids, const cv
     idx++;
     }
     // Save debug image
-    //cv::imwrite("/tmp/tracker_debug.png", frame);
+    cv::imwrite("/tmp/tracker_debug.png", frame);
     return temp;
 }
+
+} //namespace ST::dbg

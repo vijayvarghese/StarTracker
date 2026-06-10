@@ -4,19 +4,20 @@
 #include <fstream>
 
 
-#include "core.hpp"
-#include "types.hpp"
+#include "startracker/identification/n-star/n-star.hpp"
+#include "startracker/core/types.hpp"
+#include "startracker/core/logger.hpp" 
 #include "config.hpp"
-#include "logger.hpp" 
-
 
  
 
-bool PopulateCandidatePairs(AngSepProfile& profiles, const std::unordered_map<int,std::vector<StarPair>>& lookup_){
+namespace ST::identification::nStar{
+
+bool PopulateCandidatePairs(AngSepProfile& profiles, const std::unordered_map<int,std::vector<StarPair>>& lookup_, const double& tolerance, const double& precision){
 
     for (auto& profile : profiles){
-        int center_bin = (int) std::round(profile.centroid_ray_profile.angular_separation / lookup_cfg.lookup_precision);
-        for(int offset = -lookup_cfg.tolerance; offset <= lookup_cfg.tolerance; ++offset){
+        int center_bin = (int) std::round(profile.centroid_ray_profile.angular_separation / precision);
+        for(int offset = -tolerance; offset <= tolerance; ++offset){
             int bin = center_bin + offset;
             auto it = lookup_.find(bin);
             if(it != lookup_.end()){
@@ -122,3 +123,5 @@ std::sort(ranked.rbegin(), ranked.rend());
     return hypothesis;
 }
 
+
+} // namespace ST::identification::nStar

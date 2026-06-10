@@ -1,6 +1,8 @@
-#include "geometry.hpp"
+#include <opencv2/core/core.hpp>
+#include "startracker/math/geometry.hpp"
 
 
+namespace ST::math {
 
 cv::Vec3d pixel_to_body_ray(
     double u, double v,
@@ -24,7 +26,7 @@ double AngularSeparationDeg(const cv::Vec3d& a, const cv::Vec3d& b)
 }
 
 
-
+} //namespace ST::math
 
 
 

@@ -1,0 +1,57 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "dev",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/dev"
+        },
+        {
+            "name": "tui",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/tui-dev",
+            "cacheVariables": {
+                "TUI_BUILD": "ON"
+            }
+        },
+                {
+            "name": "devtools",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/devtools",
+            "cacheVariables": {
+                "DEV_TOOLS": "ON"
+            }
+        }
+
+    ],
+    "buildPresets": [
+        {
+            "name": "dev",
+            "targets":[
+                "startracker"
+            ],
+            "configurePreset": "dev",
+            "jobs":7
+        },
+        {
+            "name": "tui",
+            "targets":[
+                "startracker"
+            ],
+            "configurePreset": "tui",
+            "jobs":7
+        },
+                {
+            "name": "devtools",
+            "targets":[
+                "Bin_Gen",
+                "Lookup_Gen"
+            ],
+            "configurePreset": "devtools",
+            "jobs":7
+        }
+
+    ]
+
+
+}

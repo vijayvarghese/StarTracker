@@ -1,7 +1,10 @@
+/**
+ * @file config.hpp
+ */
 #pragma once
 #include<string>
 #include<chrono>
-#include "types.hpp"
+#include "startracker/core/types.hpp"
 
 
 static constexpr double READER_HZ = 33.0;
@@ -13,9 +16,9 @@ static constexpr auto PROCESSOR_PERIOD = std::chrono::milliseconds(static_cast<i
 
 struct lookupconfig{
     //std::string binpath = "../data/processed/6.5/mag65_fov23.bin";
-    std::string binpath = "../../data/processed/3/Hip_mag3_lookup_new_bin.bin";
+    std::string binpath = "../../../data/processed/3/Hip_mag3_lookup_new_bin.bin";
     double lookup_precision = 0.5;
-    int tolerance = 4;
+    int tolerance = 5;
 };
 
 struct ReaderConfig{
@@ -23,7 +26,7 @@ struct ReaderConfig{
     //std::string file_path = "/tmp/startracker_frame.png";
     //std::string file_path = "../docs/star_latest_Phase0Validation_Debug_.png";
     //std::string file_path = "/tmp/star_latest.png";
-    std::string file_path = "../../docs/Unity Frame_screenshot_04.01.2026.png";
+    std::string file_path = "../../../docs/Unity Frame_screenshot_04.01.2026.png";
     int expected_width = 1024;
     int expected_height = 1024;
     double frequency = 33.0;
@@ -49,11 +52,6 @@ struct cvConfig
     double blur_sigma = 1.0;
     int area_max = 2000;
     bool window_debug = false;
-};
-
-struct pinhole_cam_intresic
-{
-    /* data */
 };
 
 

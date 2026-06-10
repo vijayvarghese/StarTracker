@@ -3,20 +3,19 @@ main.cpp
 reader.cpp
 processor.cpp
 config.cpp
-logger.cpp
-tui.cpp
-img_proc.cpp
-geometry.cpp
-core.cpp
+core/logger.cpp
+image/img_proc.cpp
+math/geometry.cpp
+identification/n-star/n-star.cpp
 hal/UnityMock.cpp
+util/dbg/debug_utils.cpp
+catalog/loadbin.cpp
 )
 
 target_compile_features(startracker PRIVATE cxx_std_20)
 
 target_include_directories(startracker PUBLIC 
-    "${PROJECT_SOURCE_DIR}/include"
-    "${PROJECT_SOURCE_DIR}/include/startracker"
-    "${PROJECT_SOURCE_DIR}/include/startracker/hal"
+    "${PROJECT_SOURCE_DIR}/include/"
 )
 
 target_compile_options(startracker PRIVATE 
@@ -24,12 +23,29 @@ target_compile_options(startracker PRIVATE
 )
 
 target_link_libraries(startracker 
+PRIVATE
 ${OpenCV_LIBS}
 pthread
 nlohmann_json::nlohmann_json
-ftxui::screen
-ftxui::dom
-ftxui::component
 )
+
+if(TUI_BUILD)
+    target_sources(startracker PRIVATE
+    ui/tui.cpp
+    )
+
+    target_link_libraries(startracker
+        PRIVATE
+        ftxui::screen
+        ftxui::dom
+        ftxui::component
+    )
+
+    target_compile_definitions(
+        startracker
+        PRIVATE
+        ST_TUI_BUILD
+    )
+endif()
 
 add_compile_options(-Wall -Wextra -Wpedantic)

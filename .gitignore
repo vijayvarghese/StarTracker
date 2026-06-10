@@ -14,7 +14,6 @@ Makefile
 *.bin
 *.a
 *.so
-startracker
 
 # === EDITOR & IDE FILES ===
 .vscode/
