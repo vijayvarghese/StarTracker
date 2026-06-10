@@ -10,18 +10,17 @@ namespace ST {
 class UnityMock : public ICamera {
 
 private:
-    std::string file_path_;
-    int frame_index = 0;
+  std::string file_path_;
+  int frame_index = 0;
 
 public:
-    explicit UnityMock(const std::string& file_path)
-        : file_path_(file_path) {}
+  explicit UnityMock(const std::string &file_path) : file_path_(file_path) {}
 
-    cv::Mat grabFrame() override;
+  cv::Mat grabFrame() override;
 
-    bool isOpen() const override;
+  bool isOpen() const override;
 
-    void close() override;
+  void close() override;
 };
 
-}
+} // namespace ST

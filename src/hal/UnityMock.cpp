@@ -4,19 +4,13 @@ namespace ST {
 
 cv::Mat UnityMock::grabFrame() {
 
-    cv::Mat img = cv::imread(
-        file_path_,
-        cv::IMREAD_COLOR
-    );
+  cv::Mat img = cv::imread(file_path_, cv::IMREAD_COLOR);
 
-    return img;
+  return img;
 }
 
-bool UnityMock::isOpen() const {
-    return true;
-}
+bool UnityMock::isOpen() const { return true; }
 
-void UnityMock::close() {
-}
+void UnityMock::close() {}
 
-}
+} // namespace ST

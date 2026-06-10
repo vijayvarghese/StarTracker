@@ -1,20 +1,20 @@
 #pragma once
-#include <opencv2/core/core.hpp>
 #include "startracker/core/types.hpp"
+#include <opencv2/core/core.hpp>
 
-
-namespace ST::identification::nStar{
+namespace ST::identification::nStar {
 
 /**
- * @brief Populate the the cadidate pair field at the angular seperation profile, From the lookup table bin.
+ * @brief Populate the the cadidate pair field at the angular seperation
+ * profile, From the lookup table bin.
  * @param profiles Reference to vector of Angular seperation fields.
  * @param lookup_ reference to the lookup table.
  * @return true/false
  */
-bool PopulateCandidatePairs(AngSepProfile& profiles, const std::unordered_map<int,std::vector<StarPair>>& lookup_, const double& tolerance, const double& precision);
-
-
-
+bool PopulateCandidatePairs(
+    AngSepProfile &profiles,
+    const std::unordered_map<int, std::vector<StarPair>> &lookup_,
+    const double &tolerance, const double &precision);
 
 /**
  * @brief Generate star identity hypotheses using centroid vote aggregation.
@@ -65,10 +65,7 @@ bool PopulateCandidatePairs(AngSepProfile& profiles, const std::unordered_map<in
  *  - vote statistics
  *  - confidence state
  */
-std::vector<StarHypothesis> vote_and_hypothesize(
-    const AngSepProfile& profiles,
-    int N);
+std::vector<StarHypothesis> vote_and_hypothesize(const AngSepProfile &profiles,
+                                                 int N);
 
-
-
-} //namespace ST::identification::nStar
+} // namespace ST::identification::nStar
