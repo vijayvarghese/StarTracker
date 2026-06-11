@@ -7,14 +7,15 @@
 
 namespace ST {
 
-class UnityMock : public ICamera {
+class UnityMockFile : public ICamera {
 
 private:
   std::string file_path_;
   int frame_index = 0;
 
 public:
-  explicit UnityMock(const std::string &file_path) : file_path_(file_path) {}
+  explicit UnityMockFile(const std::string &file_path)
+      : file_path_(file_path) {}
 
   cv::Mat grabFrame() override;
 

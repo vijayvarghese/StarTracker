@@ -7,7 +7,8 @@ core/logger.cpp
 image/img_proc.cpp
 math/geometry.cpp
 identification/n-star/n-star.cpp
-hal/UnityMock.cpp
+hal/UnityMockFile.cpp
+hal/UnityMockTCP.cpp
 util/dbg/debug_utils.cpp
 catalog/loadbin.cpp
 )

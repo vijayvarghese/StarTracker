@@ -15,7 +15,8 @@
 #include "startracker/core/logger.hpp"
 #include "startracker/core/types.hpp"
 #include "startracker/hal/ICamera.hpp"
-#include "startracker/hal/UnityMock.hpp"
+#include "startracker/hal/UnityMockFile.hpp"
+#include "startracker/hal/UnityMockTCP.hpp"
 #include "startracker/util/dbg/debug_utils.hpp"
 
 #include "processor.hpp"
@@ -39,6 +40,8 @@ std::atomic<bool> ST::dbg::ang_profile = false;
 std::atomic<int> ST::core::log::log_level = 0;
 
 std::atomic<std::shared_ptr<cv::Mat>> latest_frame{nullptr};
+// auto cam = std::make_unique<ST::UnityMockTCP>();
+auto cam = std::make_unique<ST::UnityMockFile>(reader_cfg.file_path);
 bool use_tui = false;
 
 // function to capture runtime args
@@ -79,6 +82,8 @@ void cap_args(int &argc, char **argv) {
 void signal_handler(int signal) {
   if (signal == SIGINT) {
     ST::running.store(false);
+    // Camera Shutdown request !
+    // cam->requestShutdown();
   }
 }
 
@@ -96,8 +101,6 @@ int main(int argc, char *argv[]) {
 
   // Loading lookup bin
   (void)ST::catalog::loadBin(lookup_cfg.binpath, ST::lookup);
-
-  auto cam = std::make_unique<ST::UnityMock>(reader_cfg.file_path);
 
   std::vector<std::thread> threads;
   try {
@@ -144,7 +147,7 @@ int main(int argc, char *argv[]) {
   for (auto &t : threads)
     if (t.joinable())
       t.join();
-
+  cam->close();
   LOG_INFO << "Exited !!! ";
   return 0;
 }

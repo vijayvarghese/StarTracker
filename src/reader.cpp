@@ -22,11 +22,16 @@ void image_reader_thread(std::atomic<std::shared_ptr<cv::Mat>> &latest_frame,
     // img = cv::imread(reader_cfg.file_path, cv::IMREAD_COLOR);
     img = cam.grabFrame();
     if (img.empty()) {
+      std::cout << "Image Empty ..." << std::endl;
+      latest_frame.store(nullptr);
       std::this_thread::sleep_for(std::chrono::milliseconds(reader_cfg.period));
       continue;
     }
     if ((img.cols != reader_cfg.expected_width) ||
         (img.rows != reader_cfg.expected_height)) {
+      std::cout << "Image not complient ..." << std::endl;
+      std::cout << "Received image: " << img.cols << "x" << img.rows
+                << std::endl;
       std::this_thread::sleep_for(std::chrono::milliseconds(reader_cfg.period));
       continue;
     }

@@ -48,3 +48,5 @@ enum class BinLoadStatus { Ok = 0, Error = 1 };
 
 using AngSepProfile = std::vector<AngularSep_Profile_fields>;
 // using FrameAtom = std::atomic<std::shared_ptr<cv::Mat>>;
+
+std::atomic<bool> HAL_isTcpEnabled = true;

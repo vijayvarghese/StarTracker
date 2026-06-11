@@ -81,7 +81,7 @@ void processor_thread(std::atomic<std::shared_ptr<cv::Mat>> &latest_frame,
 
     std::this_thread::sleep_until(next);
 
-    if (!frame) {
+    if (!frame || frame->empty()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
       continue;
     }
