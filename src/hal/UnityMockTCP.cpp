@@ -48,8 +48,6 @@ UnityMockTCP::UnityMockTCP(uint16_t port) {
   if (listen(m_serverFd, 1) < 0) {
     throw std::runtime_error("Failed to listen");
   }
-
-  std::cout << "Waiting for Unity connection..." << std::endl;
 }
 
 UnityMockTCP::~UnityMockTCP() { close(); }
@@ -57,9 +55,9 @@ UnityMockTCP::~UnityMockTCP() { close(); }
 bool UnityMockTCP::waitForConnection() {
   if (m_connected)
     return true;
-  std::cout << "Waiting for Unity connection..." << std::endl;
+  std::cout << "Waiting for Unity connection..." << "\n";
   if (!waitReadable(m_serverFd)) {
-    std::cout << "Shutdown requested" << std::endl;
+    std::cout << "Shutdown requested" << "\n";
     return false;
   }
   sockaddr_in clientAddr{};
@@ -68,8 +66,6 @@ bool UnityMockTCP::waitForConnection() {
 
   m_clientFd =
       accept(m_serverFd, reinterpret_cast<sockaddr *>(&clientAddr), &len);
-  std::cout << "accept returned" << std::endl;
-  std::cout << "client fd=" << m_clientFd << std::endl;
   if (m_clientFd < 0)
     return false;
 
@@ -105,13 +101,10 @@ cv::Mat UnityMockTCP::grabFrame() {
   }
 
   PacketHeader hdr{};
-  std::cout << "waiting for header" << std::endl;
   if (!recvAll(&hdr, sizeof(hdr))) {
     std::cout << "header failed" << std::endl;
     return {};
   }
-  std::cout << "frame=" << hdr.frameId << " json=" << hdr.jsonSize
-            << " img=" << hdr.imageSize << std::endl;
   std::vector<char> json(hdr.jsonSize);
 
   if (!recvAll(json.data(), hdr.jsonSize)) {

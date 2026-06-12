@@ -40,8 +40,7 @@ std::atomic<bool> ST::dbg::ang_profile = false;
 std::atomic<int> ST::core::log::log_level = 0;
 
 std::atomic<std::shared_ptr<cv::Mat>> latest_frame{nullptr};
-// auto cam = std::make_unique<ST::UnityMockTCP>();
-auto cam = std::make_unique<ST::UnityMockFile>(reader_cfg.file_path);
+
 bool use_tui = false;
 
 // function to capture runtime args
@@ -82,15 +81,15 @@ void cap_args(int &argc, char **argv) {
 void signal_handler(int signal) {
   if (signal == SIGINT) {
     ST::running.store(false);
-    // Camera Shutdown request !
-    // cam->requestShutdown();
   }
 }
 
 int main(int argc, char *argv[]) {
 
-  // SigINT handler
-  // Lookup sigaction implimentation
+  auto cam = std::make_unique<ST::UnityMockTCP>();
+  // auto cam = std::make_unique<ST::UnityMockFile>(reader_cfg.file_path);
+  //  SigINT handler
+  //  Lookup sigaction implimentation
   signal(SIGINT, signal_handler);
 
   // cap_arg
@@ -144,10 +143,14 @@ int main(int argc, char *argv[]) {
     throw;
   }
 
+  // Camera Shutdown request for TCP Unity camera. to pass shutdown signal to
+  // camera waitforconnection loop to shutdown.
+  cam->requestShutdown();
+
   for (auto &t : threads)
     if (t.joinable())
       t.join();
-  cam->close();
+
   LOG_INFO << "Exited !!! ";
   return 0;
 }
