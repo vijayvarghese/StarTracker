@@ -11,7 +11,7 @@
 namespace ST::identification::nStar {
 
 bool PopulateCandidatePairs(
-    AngSepProfile &profiles,
+    ST::AngSepProfile &profiles,
     const std::unordered_map<int, std::vector<StarPair>> &lookup_,
     const double &tolerance, const double &precision) {
 
@@ -32,7 +32,7 @@ bool PopulateCandidatePairs(
 }
 
 std::vector<StarHypothesis>
-vote_and_hypothesize(const AngSepProfile &profiles,
+vote_and_hypothesize(const ST::AngSepProfile &profiles,
                      int N) // number of detected centroids — 9 in your case
 {
   const int required = N - 1; // 8
@@ -50,6 +50,8 @@ vote_and_hypothesize(const AngSepProfile &profiles,
     const cv::Point2d &ci = prof.centroid_ray_profile.centeroid_pair[0];
     const cv::Point2d &cj = prof.centroid_ray_profile.centeroid_pair[1];
 
+    centroid_ray_map[ci] = prof.centroid_ray_profile.ray_pair[0];
+    centroid_ray_map[cj] = prof.centroid_ray_profile.ray_pair[1];
     // collect unique IDs seen in THIS profile for ci and cj separately
     std::unordered_set<std::string> seen_ci;
     std::unordered_set<std::string> seen_cj;

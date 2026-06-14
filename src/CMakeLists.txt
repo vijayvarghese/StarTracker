@@ -10,7 +10,8 @@ identification/n-star/n-star.cpp
 hal/UnityMockFile.cpp
 hal/UnityMockTCP.cpp
 util/dbg/debug_utils.cpp
-catalog/loadbin.cpp
+catalog/loader.cpp
+attitude/quest.cpp
 )
 
 target_compile_features(startracker PRIVATE cxx_std_20)
@@ -26,6 +27,7 @@ target_compile_options(startracker PRIVATE
 target_link_libraries(startracker 
 PRIVATE
 ${OpenCV_LIBS}
+m
 pthread
 nlohmann_json::nlohmann_json
 )

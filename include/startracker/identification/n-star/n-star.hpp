@@ -12,7 +12,7 @@ namespace ST::identification::nStar {
  * @return true/false
  */
 bool PopulateCandidatePairs(
-    AngSepProfile &profiles,
+    ST::AngSepProfile &profiles,
     const std::unordered_map<int, std::vector<StarPair>> &lookup_,
     const double &tolerance, const double &precision);
 

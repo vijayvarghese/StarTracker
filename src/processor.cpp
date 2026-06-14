@@ -12,6 +12,7 @@
 #include "startracker/core/types.hpp"
 #include "startracker/util/dbg/debug_utils.hpp"
 
+#include "startracker/attitude/quest.hpp"
 #include "startracker/identification/n-star/n-star.hpp"
 #include "startracker/image/img_proc.hpp"
 #include "startracker/math/geometry.hpp"
@@ -57,8 +58,8 @@ extern lookupconfig lookup_cfg;
 extern ProcessorConfig processor_cfg;
 
 void processor_thread(std::atomic<std::shared_ptr<cv::Mat>> &latest_frame,
-                      std::unordered_map<int, std::vector<StarPair>> &lookup,
-                      std::atomic<bool> &running) {
+                      ST::BinnedStarMap &lookup, std::atomic<bool> &running,
+                      ST::StarProfileMap &rl_DAT_lookup) {
   //  !frameready.load()continue -> get_frame_safe() ->
   //  frame_cpy_local.empty()continue -> preprocess_frame()
   double tsec = 0.0;
@@ -77,7 +78,7 @@ void processor_thread(std::atomic<std::shared_ptr<cv::Mat>> &latest_frame,
     cv::Vec3d temp_ray;
     CentroidRayPair pair;
     std::vector<StarHypothesis> hypothesis;
-    AngSepProfile AngularSeparationProfile;
+    ST::AngSepProfile AngularSeparationProfile;
 
     std::this_thread::sleep_until(next);
 
@@ -156,8 +157,8 @@ void processor_thread(std::atomic<std::shared_ptr<cv::Mat>> &latest_frame,
         AngularSeparationProfile, centroids.size());
 
     for (const auto &h : hypothesis) {
-      LOG_DEBUG << h.centroid << " : " << h.hip_id << "; (" << h.vote_count
-                << ")\n";
+      std::cout << h.centroid << " : " << h.hip_id << "; (" << h.ray << ")\n";
+      quest(h.hip_id, rl_DAT_lookup); // FIX ME const correct lookup and hip id
     }
     LOG_DEBUG << "--------------------------------------\n";
 

@@ -63,4 +63,4 @@ extern ProcessorConfig processor_cfg;
 /**
  * @brief Initilize the config loader and set the global veriables.
  */
-ConfigInitStatus config_init();
+ST::ConfigInitStatus config_init();

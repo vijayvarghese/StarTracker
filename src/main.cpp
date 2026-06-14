@@ -11,7 +11,7 @@
 #include "startracker/ui/tui.hpp"
 #endif
 
-#include "startracker/catalog/loadbin.hpp"
+#include "startracker/catalog/loader.hpp"
 #include "startracker/core/logger.hpp"
 #include "startracker/core/types.hpp"
 #include "startracker/hal/ICamera.hpp"
@@ -26,9 +26,9 @@
 
 namespace ST {
 std::atomic<bool> running{true};
-std::unordered_map<int, std::vector<StarPair>> lookup;
 } // namespace ST
-
+ST::BinnedStarMap lookup;
+ST::StarProfileMap rl_DAT_lookup;
 extern lookupconfig lookup_cfg;
 extern ReaderConfig reader_cfg;
 
@@ -86,8 +86,8 @@ void signal_handler(int signal) {
 
 int main(int argc, char *argv[]) {
 
-  auto cam = std::make_unique<ST::UnityMockTCP>();
-  // auto cam = std::make_unique<ST::UnityMockFile>(reader_cfg.file_path);
+  // auto cam = std::make_unique<ST::UnityMockTCP>();
+  auto cam = std::make_unique<ST::UnityMockFile>(reader_cfg.file_path);
   //  SigINT handler
   //  Lookup sigaction implimentation
   signal(SIGINT, signal_handler);
@@ -99,14 +99,20 @@ int main(int argc, char *argv[]) {
   (void)config_init();
 
   // Loading lookup bin
-  (void)ST::catalog::loadBin(lookup_cfg.binpath, ST::lookup);
+  (void)ST::catalog::loader::loadBin(lookup_cfg.binpath, lookup);
+
+  // Loading Real DAT
+  std::string file = "/home/entity/Desktop/Work/RT_CPP/fl-rt/StarTracker/data/"
+                     "processed/3/Hip_mag3.csv";
+  (void)ST::catalog::loader::loadcatalog(file, rl_DAT_lookup);
 
   std::vector<std::thread> threads;
   try {
     threads.emplace_back(image_reader_thread, std::ref(latest_frame),
                          std::ref(*cam), std::ref(ST::running));
     threads.emplace_back(processor_thread, std::ref(latest_frame),
-                         std::ref(ST::lookup), std::ref(ST::running));
+                         std::ref(lookup), std::ref(ST::running),
+                         std::ref(rl_DAT_lookup));
   } catch (const std::exception &e) {
     ST::running.store(false);
     for (auto &t : threads)
@@ -145,7 +151,7 @@ int main(int argc, char *argv[]) {
 
   // Camera Shutdown request for TCP Unity camera. to pass shutdown signal to
   // camera waitforconnection loop to shutdown.
-  cam->requestShutdown();
+  // cam->requestShutdown();
 
   for (auto &t : threads)
     if (t.joinable())

@@ -10,6 +10,12 @@ struct StarPair {
   std::string id2;
 };
 
+struct StarProfile {
+  double ra_rad;
+  double dec_rad;
+  double mag;
+};
+
 struct CentroidRayPair {
   double angular_separation;
   std::vector<cv::Point2d> centeroid_pair;
@@ -42,9 +48,19 @@ struct StarHypothesis {
   std::string hip_id_second_best;
 };
 
+namespace ST {
 enum class ConfigInitStatus { Json = 1, FallBack = 2, Error = 3 };
 
-enum class BinLoadStatus { Ok = 0, Error = 1 };
+enum class LoaderStatus { Ok = 0, Error = 1 };
 
 using AngSepProfile = std::vector<AngularSep_Profile_fields>;
 // using FrameAtom = std::atomic<std::shared_ptr<cv::Mat>>;
+
+/**
+ * @brief RealStarProfile = std::unordered_map<std::string, StarProfile>;
+ *
+ */
+using StarProfileMap = std::unordered_map<std::string, StarProfile>;
+using BinnedStarMap = std::unordered_map<int, std::vector<StarPair>>;
+
+} // namespace ST

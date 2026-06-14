@@ -18,19 +18,19 @@ nlohmann::json load_config_json() {
   ;
 }
 
-ConfigInitStatus config_init() {
-  ConfigInitStatus status = ConfigInitStatus::Error;
+ST::ConfigInitStatus config_init() {
+  ST::ConfigInitStatus status = ST::ConfigInitStatus::Error;
   nlohmann::json config;
   try {
     config = load_config_json();
   } catch (const std::exception &e) {
     std::cerr << "Config load error : " << e.what()
               << "\nFalling back to internal config !!" << std::endl;
-    status = ConfigInitStatus::FallBack;
+    status = ST::ConfigInitStatus::FallBack;
   } catch (...) {
     std::cerr << "Unknown error occurred while loading config."
               << "\nFalling back to internal config !!" << std::endl;
-    status = ConfigInitStatus::FallBack;
+    status = ST::ConfigInitStatus::FallBack;
   }
 
   if (!config.is_null()) {
@@ -105,7 +105,7 @@ ConfigInitStatus config_init() {
     processor_cfg.cv.window_debug =
         config["processor_cfg"]["cv"]["window_debug"].get<bool>();
 
-    status = ConfigInitStatus::Json;
+    status = ST::ConfigInitStatus::Json;
   }
 
   return status;
