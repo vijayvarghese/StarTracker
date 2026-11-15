@@ -1,119 +1,226 @@
 # StarTracker V1
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![CI](https://github.com/vijayvarghese/StarTracker/actions/workflows/ci.yml/badge.svg)
+![Tests](https://img.shields.io/badge/tests-65%20passed-brightgreen)
 ![C++](https://img.shields.io/badge/C%2B%2B-20-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**StarTracker V1** is a multi-threaded C++ application for star tracking and orientation estimation using computer vision techniques. It reads image frames, identifies star centroids, calculates angular separations between detected stars, and maintains a lookup table for star pair matching. 
+**StarTracker V1** is a high-performance, multi-threaded C++20 application for spacecraft star tracking and autonomous attitude determination. It acquires star field frames (via file or TCP stream), extracts centroid coordinates using computer vision, computes 3D body rays, performs star identification using $N$-star voting against the Hipparcos catalog, and computes spacecraft orientation (ECI to body frame quaternion) using the **QUEST** algorithm with iterative **MAD** outlier rejection.
 
-## 🚀 Features
+---
 
-- **Multi-threaded Architecture**: Independent reader (33 Hz) and processor (1 Hz) threads for non-blocking, asynchronous execution.
-- **Robust Image Processing Pipeline**: Grayscale conversion, Gaussian blur, binary thresholding, and Connected Components Analysis.
-- **Star Identification**: Converts 2D pixel coordinates to 3D normalized rays and computes precise angular separation.
-- **Dynamic Terminal UI (TUI)**: Terminal-based interface using FTXUI (can be toggled via arguments).
-- **Graceful Shutdown**: Safe thread joining and process termination via `SIGINT`.
-- **Comprehensive Debugging**: Detailed logging levels and visual debug modes for centroids, rays, and angular separations.
+## 🚀 Key Features
+
+- **QUEST Attitude Estimation**: Computes the optimal spacecraft attitude quaternion (ECI $\to$ body frame) using Davenport's K-matrix eigensolver (Shuster & Oh, 1981).
+- **Iterative MAD Outlier Rejection**: Dynamically filters false-positive star identifications using Median Absolute Deviation of angular residuals across solver iterations.
+- **$N$-Star Voting & Identification**: Fast angular distance binning against pre-processed Hipparcos catalog data to cast votes and identify stars with confidence scoring.
+- **Multi-threaded Architecture**: Decoupled reader thread (33 Hz) and image processing thread (10 Hz) communicating via atomic shared pointers (`std::atomic<std::shared_ptr<cv::Mat>>`) for lock-free, zero-copy handoffs.
+- **Hardware Abstraction Layer (HAL)**: Pluggable camera interfaces supporting static image sequences (`UnityMockFile`) and live TCP socket streams (`UnityMockTCP`) from Unity simulations.
+- **Computer Vision Pipeline**: Grayscale conversion, Gaussian blurring with adaptive kernel validation, binary thresholding, and Connected Components Analysis with blob filtering.
+- **Comprehensive Unit Tests (65 Tests)**: Fully automated GoogleTest and CTest test suites covering attitude, identification, image processing, geometry math, catalog loaders, config, and HAL.
+- **Automated CI/CD**: GitHub Actions matrix workflow verifying builds and tests across GCC 13 and Clang 18 on Ubuntu 24.04.
+- **Terminal User Interface (TUI)**: Optional FTXUI interactive terminal dashboard.
+
+---
+
+## 📡 Pipeline Architecture
+
+```
+[ Camera / TCP Stream ] ──(grabFrame)──> [ Reader Thread ]
+                                                │ (atomic exchange)
+                                                ▼
+                                         [ latest_frame ]
+                                                │
+                                                ▼
+                                     [ Preprocessing (OpenCV) ]
+                                                │
+                                                ▼
+                                      [ Centroid Extraction ]
+                                                │
+                                                ▼
+                                  [ Pinhole Ray Projection (b̂_i) ]
+                                                │
+                                                ▼
+                                    [ Angular Separation (θ_ij) ]
+                                                │
+                                                ▼
+                                     [ N-Star Voting Match ]
+                                                │
+                                                ▼
+                                        [ Matched Stars ]
+                                                │
+                                                ▼
+                              [ QUEST Solver + MAD Outlier Rejection ]
+                                                │
+                                                ▼
+                           [ AttitudeResult: Quaternion (q), RMS, λ_max ]
+```
+
+---
 
 ## 🛠 Prerequisites
 
-Ensure you have the following installed before building the project:
-- **C++20** compatible compiler (g++ / clang++)
-- **CMake** 3.10 or higher
-- **OpenCV** (Required for vision processing)
-- **pthread** (POSIX threads)
+Ensure the following tools and libraries are installed:
 
-*(Note: `nlohmann_json` and `ftxui` are included as external subdirectories and compiled with the project).*
+- **C++20** compiler (`g++-13+` or `clang++-18+`)
+- **CMake** (3.20 or higher)
+- **OpenCV** 4.x (`libopencv-dev`)
+- **POSIX Threads** (`pthread`)
+- **Git**
+
+*(Note: `Eigen3`, `nlohmann_json`, and `ftxui` are managed as Git submodules in `external/`).*
+
+---
 
 ## ⚙️ Building the Project
 
-The project uses CMake for its build system. To build StarTracker, follow these steps:
+### 1. Clone with Submodules
+```bash
+git clone --recurse-submodules https://github.com/vijayvarghese/StarTracker.git
+cd StarTracker
+```
+*(If already cloned without `--recurse-submodules`, initialize them with `git submodule update --init --recursive`)*
+
+### 2. Build Using CMake Presets (Recommended)
+
+StarTracker includes predefined presets in `CMakePresets.json`:
+
+| Preset | Purpose | Description |
+| :--- | :--- | :--- |
+| `dev` | Development | File HAL camera mode (`UnityMockFile`), Debug symbols |
+| `dev-tcp` | Unity Simulation | TCP camera mode (`UnityMockTCP`), Debug symbols |
+| `test` | Unit Tests | Enables GoogleTest suites and CTest runner |
+| `tui` | Terminal UI | Builds with FTXUI dashboard interface |
+| `devtools` | Utilities | Builds catalog generators (`Bin_Gen`, `Lookup_Gen`) |
 
 ```bash
-# Clone the repository
-git clone <repository_url>
-cd StarTracker
+# Configure and build dev target
+cmake --preset dev
+cmake --build --preset dev -j$(nproc)
 
-# Create a build directory
-mkdir build && cd build
-
-# Configure and compile
-cmake ..
-make
+# Configure and build TCP mode (for Unity simulator)
+cmake --preset dev-tcp
+cmake --build --preset dev-tcp -j$(nproc)
 ```
 
-The resulting executable `startracker` will be placed in the `build/` directory.
+The compiled binary `startracker` will be placed in `build/<preset>/src/startracker`.
 
-## 🎮 Running the Project
+---
 
-Run the application directly from the build directory:
+## 🧪 Running Unit Tests
+
+The test suite covers all core algorithms with 65 unit tests via GoogleTest and CTest:
+
+### Run All Tests via CTest
+```bash
+# Configure and build tests
+cmake --preset test
+cmake --build --preset test -j$(nproc)
+
+# Run test suite
+ctest --preset test --output-on-failure
+```
+
+### Run Individual Test Suites Directly
+```bash
+# Attitude determination & QUEST tests
+./build/test/tests/test_attitude
+
+# Star identification & N-star voting tests
+./build/test/tests/test_identification
+
+# Image processing & centroiding tests
+./build/test/tests/test_image_proc
+
+# Math & pinhole geometry tests
+./build/test/tests/test_math
+
+# Catalog loader & binary round-trip tests
+./build/test/tests/test_catalog_loader
+
+# Configuration tests
+./build/test/tests/test_config
+
+# Camera HAL tests
+./build/test/tests/test_hal
+```
+
+---
+
+## 🎮 Running the Application
+
+Run the application directly:
 
 ```bash
-./startracker
+./build/dev/src/startracker
 ```
 
 ### Command Line Arguments
 
-You can pass several arguments to enable debug features and control logging verbosity:
+Control debugging flags, logging levels, and UI features via CLI arguments:
 
 | Argument | Description |
-| --- | --- |
-| `--tui` | Enables the Terminal User Interface (FTXUI). |
-| `--debugc` | Enables centroid debug mode (outputs preprocessing details). |
-| `--debugr` | Enables ray debug mode (outputs pixel and 3D ray vectors). |
-| `--debuga` | Enables angular separation debug mode. |
-| `--debugimg` | Opens OpenCV visualization windows (Original, Preprocessed, Centroids). |
-| `--debugap` | Enables angular profile debug output. |
-| `--log[0-4]` | Sets the logging verbosity level. (e.g., `--log0` for minimal, `--log4` for full debug info with source file locations). |
+| :--- | :--- |
+| `--q` | Enables QUEST solver debug output ($\lambda_{\max}$, inliers, RMS, quaternion). |
+| `--debugc` | Enables centroid detection debug logging. |
+| `--debugr` | Enables 3D body-ray projection debug logging. |
+| `--debuga` | Enables pairwise angular separation debug logging. |
+| `--debugap` | Enables candidate pair identification profile logging. |
+| `--debugimg` | Displays live OpenCV preview windows (Preprocessed, Centroids, Frame). |
+| `--tui` | Launches the interactive FTXUI Terminal User Interface (if built with `tui` preset). |
+| `--log[0-4]` | Sets logging level (`--log0` minimal, `--log4` verbose debug with source locations). |
 
-**Examples:**
+**Example:**
 ```bash
-# Run with TUI enabled
-./startracker --tui
-
-# Run with full debug visualizations and medium logging
-./startracker --debugimg --debugr --log2
-
-# Run with full text-based logging and debug modes
-./startracker --debugc --debuga --log4
+# Run with QUEST solver logs and visual inspection windows:
+./build/dev/src/startracker --q --debugimg --log2
 ```
-
-## 🧩 Project Structure
-
-- `src/` - Core source code files (`main.cpp`, `processor.cpp`, `reader.cpp`, etc.).
-- `include/` - Header files defining configurations, globals, and class structures.
-- `external/` - Third-party libraries (`nlohmann_json`, `ftxui`).
-- `config/` - JSON configuration files.
-- `data/` - Contains pre-processed binary star catalog data (Hipparcos).
-- `docs/` - Documentation and reference frames.
-- `scripts/` - Auxiliary scripts.
-
-## 📡 Pipeline Architecture
-
-1. **Pre-processing**: The reader thread captures a frame (from a file or camera stream). The processor converts it to grayscale, applies a Gaussian blur, and uses a binary threshold to isolate bright objects.
-2. **Star Detection**: Connected components are analyzed to filter noise (by pixel area) and extract centroids of true stars.
-3. **3D Ray Projection**: The 2D pixel coordinates of centroids are transformed into 3D normalized rays in the camera body frame using the pinhole camera model.
-4. **Angular Separation**: Computes the angular separation between all valid star pairs using vector dot products.
-5. **Catalog Matching**: *(WIP)* Compares observed angular separation against the pre-loaded Hipparcos binary catalog to identify specific stars and estimate orientation.
 
 ---
 
-## 📝 Notes on Real Trackers (Slew Rate / Blur Constraint)
+## 🧩 Project Structure
 
-*For reference on operational constraints:*
+```
+StarTracker/
+├── .github/workflows/       # GitHub Actions CI workflow (GCC + Clang matrix)
+├── config/                  # JSON configuration files (camera intrinsics, thresholds)
+├── data/                    # Processed Hipparcos star catalog CSV & lookup bins
+├── docs/                    # Documentation and coordinate frames
+├── external/                # Submodules (Eigen, nlohmann_json, ftxui)
+├── include/                 # Public C++ headers
+│   └── startracker/
+│       ├── attitude/        # QUEST attitude solver
+│       ├── catalog/         # Catalog loader (CSV & binary formats)
+│       ├── core/            # Types, thread-safe logger
+│       ├── hal/             # Camera HAL (File & TCP mocks)
+│       ├── identification/  # N-Star voting algorithm
+│       ├── image/           # Preprocessing & centroiding
+│       ├── math/            # Pinhole geometry & angular separation
+│       └── util/            # Debug utilities
+├── scripts/                 # Analysis and error visualization scripts (Python)
+├── src/                     # Source implementation files
+├── tests/                   # GoogleTest test suites (7 test suites, 65 tests)
+├── CMakeLists.txt           # Root CMake build definition
+└── CMakePresets.json        # CMake configuration and build presets
+```
 
-**Constraint:** Blur < 0.5 pixel (rule of thumb)
+---
 
-**Given:**
-- Pixel scale = 0.1°/pixel
-- Exposure = 50ms
+## 📝 Operational Notes: Slew Rate & Blur Constraints
 
-**Calculation:**
-Max allowed slew rate = `0.5 pixel × 0.1°/pixel ÷ 0.05s` = **1°/s**
+*Real-world star tracker operational considerations:*
 
-**Handling High Slew Rates:**
-If a satellite slews faster than 1°/s, the star tracker goes temporarily blind.
-- IMU/gyro takes over attitude estimation during the maneuver.
-- The tracker reacquires the star field after the slew settles.
+- **Constraint:** Motion blur $< 0.5\text{ pixel}$ across sensor exposure time.
+- **Example:**
+  - Pixel scale = $0.1^\circ/\text{pixel}$
+  - Exposure = $50\text{ ms}$
+  - $\text{Max slew rate} = \frac{0.5\text{ px} \times 0.1^\circ/\text{px}}{0.05\text{ s}} = \mathbf{1^\circ/\text{s}}$
 
-*This is exactly why real satellites use sensor fusion — star tracker + gyroscope together, rather than relying on a star tracker alone.*
+If a spacecraft maneuvers faster than the optical slew limit, angular blur degrades centroid accuracy. During high-rate slews, spacecraft rely on gyroscope/IMU propagation and re-acquire absolute attitude with the star tracker once rates settle.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
