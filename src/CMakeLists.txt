@@ -21,7 +21,7 @@ target_include_directories(startracker PUBLIC
 )
 
 target_compile_options(startracker PRIVATE 
-    $<$<CONFIG:Debug>:-g -O0>
+    $<$<CONFIG:Debug>:-g>
 )
 
 target_link_libraries(startracker 
@@ -30,6 +30,7 @@ ${OpenCV_LIBS}
 m
 pthread
 nlohmann_json::nlohmann_json
+Eigen3::Eigen
 )
 
 if(TUI_BUILD)
@@ -50,5 +51,11 @@ if(TUI_BUILD)
         ST_TUI_BUILD
     )
 endif()
-
+if(UNITY_TCP_CAM)
+    target_compile_definitions(
+        startracker
+        PRIVATE
+        UNITY_TCP_CAM
+    )
+endif()
 add_compile_options(-Wall -Wextra -Wpedantic)

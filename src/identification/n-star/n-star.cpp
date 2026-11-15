@@ -72,10 +72,11 @@ vote_and_hypothesize(const ST::AngSepProfile &profiles,
     for (const auto &id : seen_cj)
       star_votes[cj][id]++;
   }
-  // debug
-  {
+  // debug — only when star_votes is non-empty (empty profiles → skip)
+  if (!star_votes.empty()) {
     auto &last_bucket = star_votes.rbegin()->second;
     const auto &last_pixel = star_votes.rbegin()->first;
+    (void)last_pixel; // suppress unused-variable warning
 
     // collect and sort
     std::vector<std::pair<int, std::string>> ranked;

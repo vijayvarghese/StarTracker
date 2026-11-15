@@ -86,7 +86,10 @@ ST::LoaderStatus loadcatalog(std::string &realDAT_filenname_CSV,
         rl_DAT_lookup[row[0]].ra_rad = (std::stod(row[1]) * M_PI / 180.0);
         rl_DAT_lookup[row[0]].dec_rad = (std::stod(row[2]) * M_PI / 180.0);
         rl_DAT_lookup[row[0]].mag = std::stod(row[3]);
-        // std::cout << "Test Bin " << rl_DAT_lookup[row[0]] << "\n";
+        //  std::cout << "Test Bin " << rl_DAT_lookup[row[0]] << "\n";
+        // rl_DAT_lookup[row[0]].ra_rad = std::stod(row[1]);
+        // rl_DAT_lookup[row[0]].dec_rad = std::stod(row[2]);
+        // rl_DAT_lookup[row[0]].mag = std::stod(row[3]);
         added++;
 
       } catch (const std::invalid_argument &e) {

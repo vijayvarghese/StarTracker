@@ -155,12 +155,35 @@ void processor_thread(std::atomic<std::shared_ptr<cv::Mat>> &latest_frame,
 
     hypothesis = ST::identification::nStar::vote_and_hypothesize(
         AngularSeparationProfile, centroids.size());
-
-    for (const auto &h : hypothesis) {
-      std::cout << h.centroid << " : " << h.hip_id << "; (" << h.ray << ")\n";
-      quest(h.hip_id, rl_DAT_lookup); // FIX ME const correct lookup and hip id
+    if (ST::dbg::quest) {
+      ST::dbg::printHypotheses(hypothesis);
     }
-    LOG_DEBUG << "--------------------------------------\n";
+
+    std::vector<ST::attitude::MatchedStar> matchedstars;
+    matchedstars.reserve(hypothesis.size());
+    for (const auto &h : hypothesis) {
+
+      if (!h.confident)
+        continue;
+      if (cv::norm(h.ray) < 1e-6)
+        continue;
+      matchedstars.push_back({h.ray, h.hip_id});
+      // std::cout << h.centroid << " : " << h.hip_id << "; (" << h.ray <<
+      // ")\n";
+      //  quest(h.hip_id, rl_DAT_lookup); // FIX ME const correct lookup and hip
+      //  id
+    }
+    // LOG_DEBUG << "--------------------------------------\n";
+    ST::attitude::AttitudeResult result =
+        ST::attitude::solve_quest(matchedstars, rl_DAT_lookup);
+    if (ST::dbg::quest) {
+      LOG_DEBUG << "QUEST: n_stars=" << result.n_stars
+                << "  lambda_max=" << result.lambda_max
+                << "  rms_deg=" << result.rms_deg << "  valid=" << result.valid
+                << "  q=[" << result.q.x() << ", " << result.q.y() << ", "
+                << result.q.z() << ", " << result.q.w() << "]";
+      LOG_DEBUG << "--------------------------------------\n";
+    }
 
     if (ST::dbg::img) {
       cv::namedWindow("Unity Frame", cv::WINDOW_AUTOSIZE);

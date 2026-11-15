@@ -1,4 +1,5 @@
 #include "startracker/hal/UnityMockTCP.hpp"
+#include "startracker/core/logger.hpp"
 
 #include <opencv2/imgcodecs.hpp>
 
@@ -55,7 +56,7 @@ UnityMockTCP::~UnityMockTCP() { close(); }
 bool UnityMockTCP::waitForConnection() {
   if (m_connected)
     return true;
-  std::cout << "Waiting for Unity connection..." << "\n";
+  LOG_DEBUG << "Waiting for Unity connection..." << "\n";
   if (!waitReadable(m_serverFd)) {
     std::cout << "Shutdown requested" << "\n";
     return false;
@@ -71,7 +72,7 @@ bool UnityMockTCP::waitForConnection() {
 
   m_connected = true;
 
-  std::cout << "Unity connected" << std::endl;
+  LOG_DEBUG << "Unity connected" << std::endl;
 
   return true;
 }
@@ -105,6 +106,7 @@ cv::Mat UnityMockTCP::grabFrame() {
     std::cout << "header failed" << std::endl;
     return {};
   }
+  LOG_DEBUG << "{HAL-TCP} Frame ID : " << hdr.frameId << "\n";
   std::vector<char> json(hdr.jsonSize);
 
   if (!recvAll(json.data(), hdr.jsonSize)) {

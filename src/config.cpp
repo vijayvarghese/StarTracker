@@ -3,6 +3,7 @@
  */
 #include "config.hpp"
 #include "nlohmann/json.hpp"
+#include "startracker/core/logger.hpp"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -107,6 +108,8 @@ ST::ConfigInitStatus config_init() {
 
     status = ST::ConfigInitStatus::Json;
   }
-
+  if (status == ST::ConfigInitStatus::Json) {
+    LOG_DEBUG << "Config Json Loaded ! ";
+  }
   return status;
 }

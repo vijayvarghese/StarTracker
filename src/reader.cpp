@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "config.hpp"
+#include "nlohmann/json.hpp"
 #include "reader.hpp"
 #include "startracker/core/logger.hpp"
 #include "startracker/core/types.hpp"
@@ -15,12 +16,14 @@ void image_reader_thread(std::atomic<std::shared_ptr<cv::Mat>> &latest_frame,
                          ST::ICamera &cam, std::atomic<bool> &running) {
 
   cv::Mat img;
+  nlohmann::json frame_meta;
   while (running.load()) {
     auto next = std::chrono::steady_clock::now() + reader_cfg.period;
     std::this_thread::sleep_until(next); // sync to period
 
     // img = cv::imread(reader_cfg.file_path, cv::IMREAD_COLOR);
     img = cam.grabFrame();
+
     if (img.empty()) {
       std::cout << "Image Empty ..." << std::endl;
       latest_frame.store(nullptr);
@@ -38,13 +41,13 @@ void image_reader_thread(std::atomic<std::shared_ptr<cv::Mat>> &latest_frame,
 
     //{ // Critical section..
     // std::lock_guard<std::mutex> locklatest(M_latestframe);
-    cv::Mat frame_in = img.clone();
+    // cv::Mat frame_in = img.clone();
     ////LOG_DEBUG<<"frame updated (Reader) "<<"  RES : "<<img.cols<<" x
     ///"<<img.rows; //for debug
     // f_readyFlag = true;
     // }
 
-    auto new_frame = std::make_shared<cv::Mat>(std::move(frame_in));
+    auto new_frame = std::make_shared<cv::Mat>(std::move(img.clone()));
 
     // publish atomically
     latest_frame.store(new_frame, std::memory_order_release);

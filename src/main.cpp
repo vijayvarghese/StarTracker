@@ -11,6 +11,10 @@
 #include "startracker/ui/tui.hpp"
 #endif
 
+#define STR_PROFILE_PATH                                                       \
+  "/media/entity/SharedVolume/Work/RT_CPP/fl-rt/StarTracker/data/processed/3/" \
+  "Hip_mag3.csv"
+
 #include "startracker/catalog/loader.hpp"
 #include "startracker/core/logger.hpp"
 #include "startracker/core/types.hpp"
@@ -26,6 +30,7 @@
 
 namespace ST {
 std::atomic<bool> running{true};
+bool use_tui = false;
 } // namespace ST
 ST::BinnedStarMap lookup;
 ST::StarProfileMap rl_DAT_lookup;
@@ -37,13 +42,14 @@ std::atomic<bool> ST::dbg::ray = false;
 std::atomic<bool> ST::dbg::ang_sep = false;
 std::atomic<bool> ST::dbg::img = false;
 std::atomic<bool> ST::dbg::ang_profile = false;
+std::atomic<bool> ST::dbg::quest = false;
 std::atomic<int> ST::core::log::log_level = 0;
 
 std::atomic<std::shared_ptr<cv::Mat>> latest_frame{nullptr};
 
 bool use_tui = false;
 
-// function to capture runtime args
+// function to capture runtime args -> Fix Me  Better move to standalone file
 void cap_args(int &argc, char **argv) {
   if (argc == 1)
     return;
@@ -60,10 +66,11 @@ void cap_args(int &argc, char **argv) {
     else if (arg == "--debugimg")
       ST::dbg::img = true;
     else if (arg == "--debugap")
-      ST::dbg::ang_profile = true;
+      ST::dbg::quest = true;
     else if (arg == "--tui")
-      use_tui = true;
-
+      ST::use_tui = true;
+    else if (arg == "--q")
+      ST::dbg::quest = true;
     else if (arg == "--log0")
       ST::core::log::log_level = 0;
     else if (arg == "--log1")
@@ -86,10 +93,8 @@ void signal_handler(int signal) {
 
 int main(int argc, char *argv[]) {
 
-  // auto cam = std::make_unique<ST::UnityMockTCP>();
-  auto cam = std::make_unique<ST::UnityMockFile>(reader_cfg.file_path);
   //  SigINT handler
-  //  Lookup sigaction implimentation
+  //  Lookup (WEB) sigaction implimentation
   signal(SIGINT, signal_handler);
 
   // cap_arg
@@ -98,12 +103,17 @@ int main(int argc, char *argv[]) {
   // Config LOad
   (void)config_init();
 
+#ifdef UNITY_TCP_CAM
+  auto cam = std::make_unique<ST::UnityMockTCP>();
+#else
+  auto cam = std::make_unique<ST::UnityMockFile>(reader_cfg.file_path);
+#endif
+
   // Loading lookup bin
   (void)ST::catalog::loader::loadBin(lookup_cfg.binpath, lookup);
 
   // Loading Real DAT
-  std::string file = "/home/entity/Desktop/Work/RT_CPP/fl-rt/StarTracker/data/"
-                     "processed/3/Hip_mag3.csv";
+  std::string file = STR_PROFILE_PATH;
   (void)ST::catalog::loader::loadcatalog(file, rl_DAT_lookup);
 
   std::vector<std::thread> threads;
@@ -125,7 +135,7 @@ int main(int argc, char *argv[]) {
   try {
 #ifdef ST_TUI_BUILD
     LOG_INFO << "TUI BUILD !";
-    if (use_tui) {
+    if (ST::use_tui) {
       TuiThread tui("StarTracker", "1.0.0", ST::running);
       tui.start();
       tui.join();
@@ -149,9 +159,12 @@ int main(int argc, char *argv[]) {
     throw;
   }
 
-  // Camera Shutdown request for TCP Unity camera. to pass shutdown signal to
-  // camera waitforconnection loop to shutdown.
-  // cam->requestShutdown();
+// Camera Shutdown request for TCP Unity camera. to pass shutdown signal to
+// camera waitforconnection loop to shutdown.
+// cam->requestShutdown();
+#ifdef UNITY_TCP_CAM
+  cam->requestShutdown();
+#endif
 
   for (auto &t : threads)
     if (t.joinable())

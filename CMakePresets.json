@@ -4,7 +4,18 @@
         {
             "name": "dev",
             "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/build/dev"
+            "binaryDir": "${sourceDir}/build/dev",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "dev-tcp",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/dev-tcp",
+            "cacheVariables": {
+                "UNITY_TCP_CAM": "ON"
+            }
         },
         {
             "name": "tui",
@@ -14,44 +25,77 @@
                 "TUI_BUILD": "ON"
             }
         },
-                {
+        {
             "name": "devtools",
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build/devtools",
             "cacheVariables": {
                 "DEV_TOOLS": "ON"
             }
+        },
+        {
+            "name": "test",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/test",
+            "cacheVariables": {
+                "ST_BUILD_TESTS": "ON",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
         }
-
     ],
     "buildPresets": [
         {
             "name": "dev",
-            "targets":[
+            "targets": [
                 "startracker"
             ],
             "configurePreset": "dev",
-            "jobs":7
+            "jobs": 7
+        },
+        {
+            "name": "dev-tcp",
+            "targets": [
+                "startracker"
+            ],
+            "configurePreset": "dev-tcp",
+            "jobs": 7
         },
         {
             "name": "tui",
-            "targets":[
+            "targets": [
                 "startracker"
             ],
             "configurePreset": "tui",
-            "jobs":7
+            "jobs": 7
         },
-                {
+        {
             "name": "devtools",
-            "targets":[
+            "targets": [
                 "Bin_Gen",
                 "Lookup_Gen"
             ],
             "configurePreset": "devtools",
-            "jobs":7
+            "jobs": 7
+        },
+        {
+            "name": "test",
+            "targets": [
+                "test_math",
+                "test_attitude",
+                "test_identification",
+                "test_catalog_loader"
+            ],
+            "configurePreset": "test",
+            "jobs": 7
         }
-
+    ],
+    "testPresets": [
+        {
+            "name": "test",
+            "configurePreset": "test",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
     ]
-
-
 }

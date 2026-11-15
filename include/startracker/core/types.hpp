@@ -1,4 +1,5 @@
 #pragma once
+#include <Eigen/Geometry>
 #include <atomic>
 #include <opencv2/core/core.hpp>
 #include <string>
@@ -62,5 +63,27 @@ using AngSepProfile = std::vector<AngularSep_Profile_fields>;
  */
 using StarProfileMap = std::unordered_map<std::string, StarProfile>;
 using BinnedStarMap = std::unordered_map<int, std::vector<StarPair>>;
+
+namespace attitude {
+
+// ─── One matched star fed into the solver
+// ────────────────────────────────────── Build from confident StarHypothesis
+// entries:
+//   matched.push_back({ h.ray, h.hip_id });
+struct MatchedStar {
+  cv::Vec3d body_ray; // b_i — body/camera frame unit vector
+  std::string hip_id; // confirmed HIP ID from voting
+};
+
+// ─── Solver output
+// ──────────────────────────────────────────────────────────────
+struct AttitudeResult {
+  Eigen::Quaterniond q; // [qx qy qz qw], inertial (ECI) → body frame
+  double lambda_max;    // → 1.0 = perfect fit, < 0.5 = bad solve
+  double rms_deg;       // post-fit RMS angular residual (degrees)
+  int n_stars;          // pairs actually used
+  bool valid;           // false if too few pairs or solve degraded
+};
+} // namespace attitude
 
 } // namespace ST
