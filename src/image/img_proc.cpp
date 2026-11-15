@@ -10,10 +10,24 @@ namespace ST::image {
 cv::Mat preprocess_frame(cv::Mat &frame, const double &ts,
                          const int &blur_ksize, const double &blur_sigma,
                          const int &threshold) {
+  if (frame.empty()) {
+    return cv::Mat();
+  }
+
   cv::Mat gray, blurred, bw;
-  cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY); // gray scale
-  cv::GaussianBlur(gray, blurred, cv::Size(blur_ksize, blur_ksize),
-                   blur_sigma); // induced blur
+  if (frame.channels() == 1) {
+    gray = frame;
+  } else {
+    cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY); // gray scale
+  }
+
+  const int ksize = (blur_ksize <= 0) ? 1 : ((blur_ksize % 2 == 0) ? blur_ksize + 1 : blur_ksize);
+  if (ksize > 1) {
+    cv::GaussianBlur(gray, blurred, cv::Size(ksize, ksize), blur_sigma); // induced blur
+  } else {
+    blurred = gray;
+  }
+
   cv::threshold(blurred, bw, threshold, 255,
                 cv::THRESH_BINARY); // any dot above 200 gets full brightness
                                     // 255 rest full black.
@@ -28,6 +42,10 @@ cv::Mat preprocess_frame(cv::Mat &frame, const double &ts,
 
 std::vector<cv::Point2d> get_centroids(const cv::Mat &BW, const double &ts,
                                        const int &area_max) {
+  if (BW.empty()) {
+    return {};
+  }
+
   // gets centroids into a 2d vector and returns the same... {area_threshold, }
   cv::Mat labels, stats, centroids;
   int n = cv::connectedComponentsWithStats(BW, labels, stats, centroids);

@@ -83,7 +83,10 @@
                 "test_math",
                 "test_attitude",
                 "test_identification",
-                "test_catalog_loader"
+                "test_catalog_loader",
+                "test_image_proc",
+                "test_config",
+                "test_hal"
             ],
             "configurePreset": "test",
             "jobs": 7
